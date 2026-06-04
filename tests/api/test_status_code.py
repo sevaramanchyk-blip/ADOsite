@@ -2,7 +2,7 @@ import requests
 import pytest
 import allure
 
-@allure.feature('Тесты API')
+@allure.feature('Тесты api')
 @allure.story('Проверка статус кода')
 class TestApiAdoSite():
     @allure.title('Проверка статус кода')
