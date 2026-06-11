@@ -123,9 +123,7 @@ class WebPage(object):
                 ignore = False
                 for issue in ignore_list:
                     if issue in log_message['message']:
-
-> Andrey:
-ignore = True
+                        ignore = True
                         break
 
                 assert ignore, 'JS error "{0}" on the page!'.format(log_message)
