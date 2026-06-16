@@ -1,6 +1,5 @@
 import allure
 from selenium.webdriver.common.by import By
-from conftest import driver
 
 
 def test_links5(driver):
