@@ -1,15 +1,13 @@
 import os
 from pages.elements import WebElement, ManyWebElements
 from pages.base_page import WebPage
+from helpers.config import MAIN_URL
 
 
 class MainPage(WebPage):
     def __init__(self, web_driver, url=''):
         if not url:
-            url = (
-                os.getenv("MAIN_PAGE")
-                or 'https://ado-shop.com/'
-            )
+            url = os.getenv("MAIN_PAGE") or MAIN_URL
 
             super().__init__(web_driver, url)
 

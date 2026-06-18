@@ -4,6 +4,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from helpers.config import MAIN_URL
 
 
 def test_ado_shop(driver):
@@ -14,7 +15,7 @@ def test_ado_shop(driver):
 
 def test_header_elements(driver):
     """Проверка наличия логотипа и ссылки на профиль в хедере."""
-    driver.get('https://ado-shop.com/')
+    driver.get(MAIN_URL)
     wait = WebDriverWait(driver, 10)
 
     # Ждём загрузки хедера

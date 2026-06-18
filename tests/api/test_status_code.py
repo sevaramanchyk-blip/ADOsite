@@ -2,17 +2,7 @@
 import requests
 import pytest
 import allure
-
-BASE_URL = "https://ado-shop.com"
-
-COLLECTIONS = [
-    ("shinzou", "Shinzou"),
-    ("2nd-original-album-zanmu", "Zanmu"),
-    ("hibana", "Hibana"),
-    ("ados-best-adobum", "Ado's Best Adobum"),
-    ("phantom-siita", "Phantom Siita"),
-    ("all-merch", "All Merch"),
-]
+from helpers.config import BASE_URL, COLLECTIONS
 
 
 @allure.feature("Тесты api")
