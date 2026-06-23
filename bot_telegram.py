@@ -21,7 +21,7 @@ from telegram import (
 )
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler,
-    ContextTypes, MessageHandler, filters
+    ContextTypes
 )
 
 # Файл для хранения PID текущего процесса (блокировка повторного запуска)
@@ -788,7 +788,7 @@ async def run_load_command(
         '⚡ Запуск нагрузочного теста (~30 сек)...'
     )
     await track_message(context, chat_id, msg, context.user_data)
-    from run_load_test import run_load_test
+    from tests.load_test.run_load_test import run_load_test
     # Запуск блокирующей функции в отдельном потоке через executor
     loop = asyncio.get_event_loop()
     result = await loop.run_in_executor(
@@ -818,7 +818,7 @@ async def callback_run_load(
         '⚡ Запуск нагрузочного теста (~30 сек)...'
     )
     await track_message(context, chat_id, msg, context.user_data)
-    from run_load_test import run_load_test
+    from tests.load_test.run_load_test import run_load_test
     loop = asyncio.get_event_loop()
     result = await loop.run_in_executor(
         None, run_load_test, 10, 5, "30s"
