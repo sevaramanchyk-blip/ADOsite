@@ -1,0 +1,7 @@
+pytest>=7.0
+allure-pytest>=2.13
+requests>=2.31
+selenium>=4.15
+termcolor>=2.3
+python-telegram-bot>=20.0
+python-dotenv>=1.0
