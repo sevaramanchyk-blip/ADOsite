@@ -1,0 +1,50 @@
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+
+:root{
+  --bg-primary:#0a0a0a;
+  --bg-secondary:#111;
+  --bg-card:#1a1a1a;
+  --accent-red:#ff0033;
+  --accent-neon:#ff0066;
+  --accent-cyan:#00ffff;
+  --accent-purple:#a855f7;
+  --text-primary:#e0e0e0;
+  --text-secondary:#888;
+  --font-display:'Orbitron',sans-serif;
+  --font-body:'Noto Sans JP',sans-serif;
+  --glow-red:0 0 20px rgba(255,0,51,.6);
+  --glow-cyan:0 0 20px rgba(0,255,255,.6);
+}
+
+html{scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:var(--accent-red) var(--bg-secondary)}
+body{background:var(--bg-primary);color:var(--text-primary);font-family:var(--font-body);overflow-x:hidden;cursor:none;line-height:1.6}
+
+::-webkit-scrollbar{width:8px}
+::-webkit-scrollbar-track{background:var(--bg-secondary)}
+::-webkit-scrollbar-thumb{background:var(--accent-red);border-radius:4px}
+
+a{color:var(--accent-cyan);text-decoration:none;transition:color .3s}
+a:hover{color:var(--accent-neon)}
+
+::selection{background:var(--accent-red);color:#fff}
+
+#main-nav{position:fixed;top:0;left:0;right:0;z-index:1000;padding:1rem 2rem;transition:background .3s,box-shadow .3s}
+#main-nav.scrolled{background:rgba(10,10,10,.95);box-shadow:0 2px 20px rgba(255,0,51,.2)}
+.nav-inner{max-width:1200px;margin:0 auto;display:flex;justify-content:space-between;align-items:center}
+.nav-logo{font-family:var(--font-display);font-size:1.5rem;font-weight:900;color:var(--accent-red);letter-spacing:4px;text-shadow:var(--glow-red)}
+.nav-links{display:flex;gap:2rem;align-items:center}
+.nav-links a{font-family:var(--font-display);font-size:.85rem;letter-spacing:2px;text-transform:uppercase;color:var(--text-secondary);transition:color .3s,text-shadow .3s}
+.nav-links a:hover{color:var(--accent-cyan);text-shadow:var(--glow-cyan)}
+.nav-chat-btn{background:none;border:1px solid var(--accent-red);color:var(--accent-red);padding:.5rem 1rem;font-family:var(--font-display);font-size:.8rem;letter-spacing:1px;cursor:none;transition:all .3s}
+.nav-chat-btn:hover{background:var(--accent-red);color:#fff;box-shadow:var(--glow-red)}
+
+section{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative;padding:6rem 2rem}
+
+.section-title{font-family:var(--font-display);font-size:2.5rem;font-weight:900;text-transform:uppercase;letter-spacing:6px;margin-bottom:3rem;color:var(--text-primary)}
+.jp-accent{font-family:var(--font-body);font-size:1.5rem;color:var(--accent-neon);margin-left:.5rem}
+
+.reveal{opacity:0;transform:translateY(40px);transition:opacity .8s ease,transform .8s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+
+footer{min-height:auto;padding:3rem;text-align:center;border-top:1px solid #222}
+.footer-jp{color:var(--accent-neon);margin-top:.5rem;font-size:.9rem}

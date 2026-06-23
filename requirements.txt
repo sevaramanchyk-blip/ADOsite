@@ -1,0 +1,9 @@
+python-dotenv>=1.0.0
+python-telegram-bot>=22.0
+pytest>=9.0
+pytest-asyncio>=1.0
+requests>=2.31
+selenium>=4.15
+allure-pytest>=2.13
+locust>=2.20
+termcolor>=2.0

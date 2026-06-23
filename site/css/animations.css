@@ -1,0 +1,55 @@
+@keyframes fadeInUp{
+  from{opacity:0;transform:translateY(40px)}
+  to{opacity:1;transform:translateY(0)}
+}
+@keyframes fadeInDown{
+  from{opacity:0;transform:translateY(-20px)}
+  to{opacity:1;transform:translateY(0)}
+}
+@keyframes fadeIn{
+  from{opacity:0}to{opacity:1}
+}
+@keyframes slideInLeft{
+  from{opacity:0;transform:translateX(-40px)}
+  to{opacity:1;transform:translateX(0)}
+}
+@keyframes slideInRight{
+  from{opacity:0;transform:translateX(40px)}
+  to{opacity:1;transform:translateX(0)}
+}
+@keyframes pulse{
+  0%,100%{opacity:1}50%{opacity:.5}
+}
+@keyframes neonFlicker{
+  0%,19%,21%,23%,25%,54%,56%,100%{
+    text-shadow:
+      0 0 7px var(--accent-red),
+      0 0 10px var(--accent-red),
+      0 0 21px var(--accent-red),
+      0 0 42px var(--accent-neon);
+  }
+  20%,24%,55%{
+    text-shadow:none;
+  }
+}
+@keyframes borderGlow{
+  0%,100%{box-shadow:0 0 5px var(--accent-red)}
+  50%{box-shadow:0 0 20px var(--accent-red),0 0 40px var(--accent-neon)}
+}
+@keyframes rotate{
+  from{transform:rotate(0deg)}to{transform:rotate(360deg)}
+}
+@keyframes scaleIn{
+  from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}
+}
+@keyframes shake{
+  0%,100%{transform:translateX(0)}
+  10%,30%,50%,70%,90%{transform:translateX(-4px)}
+  20%,40%,60%,80%{transform:translateX(4px)}
+}
+
+.reveal{opacity:0;transform:translateY(40px);transition:opacity .8s ease,transform .8s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+.reveal[data-delay="200"].visible{transition-delay:.2s}
+.reveal[data-delay="400"].visible{transition-delay:.4s}
+.reveal[data-delay="600"].visible{transition-delay:.6s}

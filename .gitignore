@@ -1,0 +1,9 @@
+.bot.pid
+.env
+__pycache__/
+.pytest_cache/
+.idea/
+*.pyc
+results/
+node_modules/
+my-react-app/

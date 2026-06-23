@@ -40,7 +40,7 @@ def acquire_lock():
                 "Завершите предыдущий процесс."
             )
             sys.exit(1)
-        except OSError:
+        except (OSError, SystemError):
             # Процесс не найден — удаляем устаревший PID-файл
             PID_FILE.unlink()
     # Сохраняем PID текущего процесса
@@ -788,7 +788,7 @@ async def run_load_command(
         '⚡ Запуск нагрузочного теста (~30 сек)...'
     )
     await track_message(context, chat_id, msg, context.user_data)
-    from tests.load_test.run_load_test import run_load_test
+    from load_tests.run_load_test import run_load_test
     # Запуск блокирующей функции в отдельном потоке через executor
     loop = asyncio.get_event_loop()
     result = await loop.run_in_executor(
@@ -818,7 +818,7 @@ async def callback_run_load(
         '⚡ Запуск нагрузочного теста (~30 сек)...'
     )
     await track_message(context, chat_id, msg, context.user_data)
-    from tests.load_test.run_load_test import run_load_test
+    from load_tests.run_load_test import run_load_test
     loop = asyncio.get_event_loop()
     result = await loop.run_in_executor(
         None, run_load_test, 10, 5, "30s"
@@ -875,7 +875,7 @@ def main() -> None:
         CommandHandler("run_load_test", run_load_command)
     )
 
-    # Регистрация обработчиков инлайн-кнопок (callback-запросы)
+    # Регистрация обработчиков онлайн-кнопок (callback-запросы)
     application.add_handler(
         CallbackQueryHandler(
             callback_run_api, pattern="^run_api$"
