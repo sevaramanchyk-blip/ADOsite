@@ -15,6 +15,36 @@
     });
   });
 
+  document.querySelectorAll('.custom-select').forEach(sel=>{
+    const selected=sel.querySelector('.select-selected');
+    const options=sel.querySelector('.select-options');
+    const hiddenInput=sel.nextElementSibling;
+
+    selected.addEventListener('click',e=>{
+      e.stopPropagation();
+      document.querySelectorAll('.custom-select.open').forEach(s=>{
+        if(s!==sel)s.classList.remove('open');
+      });
+      sel.classList.toggle('open');
+    });
+
+    sel.querySelectorAll('.select-option').forEach(opt=>{
+      opt.addEventListener('click',e=>{
+        e.stopPropagation();
+        selected.textContent=opt.textContent;
+        hiddenInput.value=opt.dataset.value;
+        sel.dataset.value=opt.dataset.value;
+        sel.querySelectorAll('.select-option').forEach(o=>o.classList.remove('selected'));
+        opt.classList.add('selected');
+        sel.classList.remove('open');
+      });
+    });
+  });
+
+  document.addEventListener('click',()=>{
+    document.querySelectorAll('.custom-select.open').forEach(s=>s.classList.remove('open'));
+  });
+
   runBtn.addEventListener('click',()=>{
     runBtn.classList.add('loading');
     btnText.style.display='none';

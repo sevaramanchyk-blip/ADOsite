@@ -8,7 +8,7 @@
 }
 #cursor-inner{
   position:fixed;top:0;left:0;width:8px;height:8px;
-  background:var(--accent-red);border-radius:50%;
+  background:var(--accent-blue);border-radius:50%;
   pointer-events:none;z-index:9999;
   transform:translate(-50%,-50%);
   transition:transform .05s ease;
@@ -18,10 +18,14 @@
   pointer-events:none;z-index:9998;
 }
 
+#main-nav, #main-nav *{cursor:none !important}
+.constructor-container, .constructor-container *{cursor:none !important}
+select, select option{cursor:none !important}
+
 .cursor-hover #cursor-outer{
   width:60px;height:60px;
-  border-color:var(--accent-neon);
-  background:rgba(255,0,102,.1);
+  border-color:var(--accent-blue-light);
+  background:rgba(34,85,255,.1);
 }
 .cursor-hover #cursor-inner{
   transform:translate(-50%,-50%) scale(2);

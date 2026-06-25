@@ -501,12 +501,11 @@ async def callback_run_api(
     """Обработчик кнопки 'API тесты' — запуск API тестов."""
     query = update.callback_query
     chat_id = query.message.chat_id
-    # Удаляем старые сообщения бота, кроме текущего
+    await query.answer()
     await cleanup_messages(
         context, chat_id, context.user_data,
         except_id=query.message.message_id
     )
-    await query.answer()
     msg = await query.message.reply_text(
         "🚀 Запуск API тестов..."
     )
@@ -529,11 +528,11 @@ async def callback_run_ui(
     """Обработчик кнопки 'UI тесты' — запуск UI тестов."""
     query = update.callback_query
     chat_id = query.message.chat_id
+    await query.answer()
     await cleanup_messages(
         context, chat_id, context.user_data,
         except_id=query.message.message_id
     )
-    await query.answer()
     msg = await query.message.reply_text(
         "🌐 Запуск UI тестов..."
     )
@@ -556,11 +555,11 @@ async def callback_run_spell(
     """Обработчик кнопки 'Орфография' — проверка орфографии на сайте."""
     query = update.callback_query
     chat_id = query.message.chat_id
+    await query.answer()
     await cleanup_messages(
         context, chat_id, context.user_data,
         except_id=query.message.message_id
     )
-    await query.answer()
     msg = await query.message.reply_text(
         "📝 Запуск проверки орфографии..."
     )
@@ -586,11 +585,11 @@ async def callback_run_elements(
     """Обработчик кнопки 'Элементы' — проверка отображения элементов."""
     query = update.callback_query
     chat_id = query.message.chat_id
+    await query.answer()
     await cleanup_messages(
         context, chat_id, context.user_data,
         except_id=query.message.message_id
     )
-    await query.answer()
     msg = await query.message.reply_text(
         "👁 Запуск проверки отображения элементов..."
     )
@@ -616,11 +615,11 @@ async def callback_run_business(
     """Обработчик кнопки 'Сценарии' — запуск бизнес-сценариев."""
     query = update.callback_query
     chat_id = query.message.chat_id
+    await query.answer()
     await cleanup_messages(
         context, chat_id, context.user_data,
         except_id=query.message.message_id
     )
-    await query.answer()
     msg = await query.message.reply_text(
         "💼 Запуск бизнес-сценариев..."
     )
@@ -646,11 +645,11 @@ async def callback_about_ado(
     """Обработчик кнопки 'Про Ado' — показывает информацию об исполнителе."""
     query = update.callback_query
     chat_id = query.message.chat_id
+    await query.answer()
     await cleanup_messages(
         context, chat_id, context.user_data,
         except_id=query.message.message_id
     )
-    await query.answer()
     await query.edit_message_text(
         f"🎤 <b>Ado (アド)</b>\n"
         f"{SEP}\n\n"
@@ -682,11 +681,11 @@ async def callback_ado_songs(
     """Обработчик кнопки 'Песни Ado' — список песен с ссылками на YouTube."""
     query = update.callback_query
     chat_id = query.message.chat_id
+    await query.answer()
     await cleanup_messages(
         context, chat_id, context.user_data,
         except_id=query.message.message_id
     )
-    await query.answer()
     # Удаляем сообщение с кнопками, отправляем список песен отдельно
     try:
         await context.bot.delete_message(
@@ -731,11 +730,11 @@ async def callback_about_me(
     """Обработчик кнопки 'Обо мне' — информация о QA-инженере."""
     query = update.callback_query
     chat_id = query.message.chat_id
+    await query.answer()
     await cleanup_messages(
         context, chat_id, context.user_data,
         except_id=query.message.message_id
     )
-    await query.answer()
     await query.edit_message_text(
         f"👤 <b>Обо мне</b>\n{SEP}\n\n"
         f"QA-инженер 🔧\n\n"
@@ -757,11 +756,11 @@ async def callback_about_site(
     """Обработчик кнопки 'Магазин ADO' — информация о сайте ado-shop.com."""
     query = update.callback_query
     chat_id = query.message.chat_id
+    await query.answer()
     await cleanup_messages(
         context, chat_id, context.user_data,
         except_id=query.message.message_id
     )
-    await query.answer()
     await query.edit_message_text(
         f"🛒 <b>ADO Official Music Shop</b>\n{SEP}\n"
         f"🌐 https://ado-shop.com/\n\n"
@@ -809,11 +808,11 @@ async def callback_run_load(
     """Обработчик кнопки 'Нагрузочный тест' — запуск нагрузочного теста."""
     query = update.callback_query
     chat_id = query.message.chat_id
+    await query.answer()
     await cleanup_messages(
         context, chat_id, context.user_data,
         except_id=query.message.message_id
     )
-    await query.answer()
     msg = await query.message.reply_text(
         '⚡ Запуск нагрузочного теста (~30 сек)...'
     )

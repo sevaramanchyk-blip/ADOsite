@@ -20,6 +20,7 @@
   <div id="cursor-outer"></div>
   <div id="cursor-inner"></div>
   <canvas id="cursor-trail"></canvas>
+  <div id="screen-shake">
 
   <nav id="main-nav">
     <div class="nav-inner">
@@ -32,16 +33,40 @@
         <button id="chat-toggle" class="nav-chat-btn">
           <span class="chat-icon">&#x1F4AC;</span> Bot
         </button>
+        <button id="audio-toggle" class="nav-chat-btn audio-btn">
+          Sound Off
+        </button>
+        <div class="audio-control" id="audio-control">
+          <input type="range" id="audio-sensitivity" min="0.2" max="3" step="0.1" value="1.5" class="sensitivity-slider">
+          <span id="sensitivity-val" class="sensitivity-val">150%</span>
+        </div>
       </div>
     </div>
   </nav>
 
   <section id="hero">
     <div class="scanline-overlay"></div>
+    <div class="hero-particles">
+      <span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span>
+    </div>
+    <div class="hero-rose">
+      <img src="img/ado-rose.png" alt="ADO Rose" class="rose-img">
+    </div>
     <div class="hero-content">
       <h1 class="glitch" data-text="ADO">ADO</h1>
       <p class="hero-subtitle typewriter" data-text="アド — Dark. Gothic. Punk.">アド — Dark. Gothic. Punk.</p>
       <div class="hero-jp">歌手 · 音楽 · 魂</div>
+      <div class="hero-visualizer">
+        <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+        <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+        <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+        <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+        <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+        <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+        <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+        <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+      </div>
     </div>
     <div class="scroll-indicator">
       <span>Scroll</span>
@@ -50,14 +75,19 @@
   </section>
 
   <section id="about">
+    <div class="audio-bars audio-bars-left">
+      <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+      <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+    </div>
+    <h2 class="section-title reveal">ADO <span class="jp-accent">アド</span></h2>
     <div class="about-container">
       <div class="about-image">
         <div class="silhouette">
+          <img src="img/ado-stand.png" alt="ADO" class="silhouette-img">
           <div class="neon-glow"></div>
         </div>
       </div>
       <div class="about-text">
-        <h2 class="section-title reveal">ADO <span class="jp-accent">アド</span></h2>
         <div class="bio reveal" data-delay="200">
           <p class="bio-line"><span class="label">Name:</span> Ado (アド)</p>
           <p class="bio-line"><span class="label">Born:</span> October 24, 2002</p>
@@ -80,6 +110,12 @@
 
   <section id="discography">
     <h2 class="section-title reveal">Discography</h2>
+    <div class="discography-visualizer">
+      <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+      <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+      <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+      <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+    </div>
     <div class="album-grid">
       <div class="album-card reveal" data-delay="0">
         <div class="album-cover">
@@ -117,85 +153,174 @@
   </section>
 
   <section id="player">
-    <h2 class="section-title reveal">Music Player</h2>
+    <h2 class="section-title reveal">Music</h2>
+    <div class="player-visualizer">
+      <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+      <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+      <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+      <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+      <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+      <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+      <div class="audio-bar"></div><div class="audio-bar"></div>
+    </div>
     <div class="player-container">
-      <div class="song-list">
-        <div class="song-item active" data-embed="Qp3b-RXtz4w">
-          <span class="song-name">Usseewa</span>
-          <span class="song-year">2020</span>
-        </div>
-        <div class="song-item" data-embed="U42O6xK2W1c">
-          <span class="song-name">Readymade</span>
-          <span class="song-year">2020</span>
-        </div>
-        <div class="song-item" data-embed="gEJKhGqo33k">
-          <span class="song-name">Gira Gira</span>
-          <span class="song-year">2021</span>
-        </div>
-        <div class="song-item" data-embed="a-NH2EWtBz8">
-          <span class="song-name">Odo</span>
-          <span class="song-year">2021</span>
-        </div>
-        <div class="song-item" data-embed="QffRkPxlqCg">
-          <span class="song-name">Aishite Aishite Aishite</span>
-          <span class="song-year">2021</span>
-        </div>
-        <div class="song-item" data-embed="V1bgpCZxUZM">
-          <span class="song-name">Kura Kura</span>
-          <span class="song-year">2021</span>
-        </div>
-        <div class="song-item" data-embed="ZbXbRQ8kVYA">
-          <span class="song-name">Show</span>
-          <span class="song-year">2022</span>
-        </div>
-        <div class="song-item" data-embed="sCjx4WtrDzQ">
-          <span class="song-name">Yoru no Pierrot</span>
-          <span class="song-year">2021</span>
-        </div>
-        <div class="song-item" data-embed="ZA5sgKVBjIw">
-          <span class="song-name">New Genesis</span>
-          <span class="song-year">2022</span>
-        </div>
-        <div class="song-item" data-embed="sH9nLrVXG3k">
-          <span class="song-name">Freedom</span>
-          <span class="song-year">2022</span>
-        </div>
-        <div class="song-item" data-embed="B4VY7Z1d8xY">
-          <span class="song-name">Shoka</span>
-          <span class="song-year">2022</span>
-        </div>
-        <div class="song-item" data-embed="Iq4B5x2yMzY">
-          <span class="song-name">Rockstar</span>
-          <span class="song-year">2024</span>
-        </div>
-        <div class="song-item" data-embed="sJn6KbE6yY0">
-          <span class="song-name">Hibana</span>
-          <span class="song-year">2024</span>
-        </div>
-        <div class="song-item" data-embed="JBRGZzFK2s4">
-          <span class="song-name">Tokyo Cannibalism</span>
-          <span class="song-year">2024</span>
-        </div>
-      </div>
-      <div class="player-main">
-        <div class="video-container">
-          <iframe id="yt-player" width="100%" height="100%" src="https://www.youtube.com/embed/Qp3b-RXtz4w?rel=0" frameborder="0" allowfullscreen></iframe>
-        </div>
-        <div class="visualizer">
-          <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-          <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-          <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-          <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-          <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-          <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-          <div class="bar"></div><div class="bar"></div>
-        </div>
+      <div class="song-grid">
+        <a href="https://www.youtube.com/watch?v=Qp3b-RXtz4w" target="_blank" class="song-card reveal" data-delay="0">
+          <div class="song-cover">
+            <img src="https://img.youtube.com/vi/Qp3b-RXtz4w/mqdefault.jpg" alt="Usseewa" loading="lazy">
+            <div class="song-play">&#9654;</div>
+          </div>
+          <div class="song-info">
+            <span class="song-name">Usseewa</span>
+            <span class="song-year">2020</span>
+          </div>
+        </a>
+        <a href="https://www.youtube.com/watch?v=jg09lNupc1s" target="_blank" class="song-card reveal" data-delay="100">
+          <div class="song-cover">
+            <img src="https://img.youtube.com/vi/jg09lNupc1s/mqdefault.jpg" alt="Readymade" loading="lazy">
+            <div class="song-play">&#9654;</div>
+          </div>
+          <div class="song-info">
+            <span class="song-name">Readymade</span>
+            <span class="song-year">2020</span>
+          </div>
+        </a>
+        <a href="https://www.youtube.com/watch?v=sOiMD45QGLs" target="_blank" class="song-card reveal" data-delay="200">
+          <div class="song-cover">
+            <img src="https://img.youtube.com/vi/sOiMD45QGLs/mqdefault.jpg" alt="Gira Gira" loading="lazy">
+            <div class="song-play">&#9654;</div>
+          </div>
+          <div class="song-info">
+            <span class="song-name">Gira Gira</span>
+            <span class="song-year">2021</span>
+          </div>
+        </a>
+        <a href="https://www.youtube.com/watch?v=YnSW8ian29w" target="_blank" class="song-card reveal" data-delay="300">
+          <div class="song-cover">
+            <img src="https://img.youtube.com/vi/YnSW8ian29w/mqdefault.jpg" alt="Odo" loading="lazy">
+            <div class="song-play">&#9654;</div>
+          </div>
+          <div class="song-info">
+            <span class="song-name">Odo</span>
+            <span class="song-year">2021</span>
+          </div>
+        </a>
+        <a href="https://www.youtube.com/watch?v=fZPY-CCesko" target="_blank" class="song-card reveal" data-delay="400">
+          <div class="song-cover">
+            <img src="https://img.youtube.com/vi/fZPY-CCesko/mqdefault.jpg" alt="Aishite Aishite Aishite" loading="lazy">
+            <div class="song-play">&#9654;</div>
+          </div>
+          <div class="song-info">
+            <span class="song-name">Aishite Aishite Aishite</span>
+            <span class="song-year">2021</span>
+          </div>
+        </a>
+        <a href="https://www.youtube.com/watch?v=W_fHWaoQwkw" target="_blank" class="song-card reveal" data-delay="500">
+          <div class="song-cover">
+            <img src="https://img.youtube.com/vi/W_fHWaoQwkw/mqdefault.jpg" alt="Kura Kura" loading="lazy">
+            <div class="song-play">&#9654;</div>
+          </div>
+          <div class="song-info">
+            <span class="song-name">Kura Kura</span>
+            <span class="song-year">2021</span>
+          </div>
+        </a>
+        <a href="https://www.youtube.com/watch?v=pgXpM4l_MwI" target="_blank" class="song-card reveal" data-delay="0">
+          <div class="song-cover">
+            <img src="https://img.youtube.com/vi/pgXpM4l_MwI/mqdefault.jpg" alt="Show" loading="lazy">
+            <div class="song-play">&#9654;</div>
+          </div>
+          <div class="song-info">
+            <span class="song-name">Show</span>
+            <span class="song-year">2022</span>
+          </div>
+        </a>
+        <a href="https://www.youtube.com/watch?v=cSgZxz3le7s" target="_blank" class="song-card reveal" data-delay="100">
+          <div class="song-cover">
+            <img src="https://img.youtube.com/vi/cSgZxz3le7s/mqdefault.jpg" alt="Yoru no Pierrot" loading="lazy">
+            <div class="song-play">&#9654;</div>
+          </div>
+          <div class="song-info">
+            <span class="song-name">Yoru no Pierrot</span>
+            <span class="song-year">2021</span>
+          </div>
+        </a>
+        <a href="https://www.youtube.com/watch?v=1FliVTcX8bQ" target="_blank" class="song-card reveal" data-delay="200">
+          <div class="song-cover">
+            <img src="https://img.youtube.com/vi/1FliVTcX8bQ/mqdefault.jpg" alt="New Genesis" loading="lazy">
+            <div class="song-play">&#9654;</div>
+          </div>
+          <div class="song-info">
+            <span class="song-name">New Genesis</span>
+            <span class="song-year">2022</span>
+          </div>
+        </a>
+        <a href="https://www.youtube.com/watch?v=hgyGhu49sGc" target="_blank" class="song-card reveal" data-delay="300">
+          <div class="song-cover">
+            <img src="https://img.youtube.com/vi/hgyGhu49sGc/mqdefault.jpg" alt="Freedom" loading="lazy">
+            <div class="song-play">&#9654;</div>
+          </div>
+          <div class="song-info">
+            <span class="song-name">Freedom</span>
+            <span class="song-year">2022</span>
+          </div>
+        </a>
+        <a href="https://www.youtube.com/watch?v=GORsp0gc2Nc" target="_blank" class="song-card reveal" data-delay="400">
+          <div class="song-cover">
+            <img src="https://img.youtube.com/vi/GORsp0gc2Nc/mqdefault.jpg" alt="Shoka" loading="lazy">
+            <div class="song-play">&#9654;</div>
+          </div>
+          <div class="song-info">
+            <span class="song-name">Shoka</span>
+            <span class="song-year">2022</span>
+          </div>
+        </a>
+        <a href="https://www.youtube.com/watch?v=hRJpiCZlLX8" target="_blank" class="song-card reveal" data-delay="500">
+          <div class="song-cover">
+            <img src="https://img.youtube.com/vi/hRJpiCZlLX8/mqdefault.jpg" alt="Rockstar" loading="lazy">
+            <div class="song-play">&#9654;</div>
+          </div>
+          <div class="song-info">
+            <span class="song-name">Rockstar</span>
+            <span class="song-year">2024</span>
+          </div>
+        </a>
+        <a href="https://www.youtube.com/watch?v=EFsSYiNl2AQ" target="_blank" class="song-card reveal" data-delay="0">
+          <div class="song-cover">
+            <img src="https://img.youtube.com/vi/EFsSYiNl2AQ/mqdefault.jpg" alt="Hibana" loading="lazy">
+            <div class="song-play">&#9654;</div>
+          </div>
+          <div class="song-info">
+            <span class="song-name">Hibana</span>
+            <span class="song-year">2024</span>
+          </div>
+        </a>
+        <a href="https://www.youtube.com/watch?v=zpu9V9lUVhw" target="_blank" class="song-card reveal" data-delay="100">
+          <div class="song-cover">
+            <img src="https://img.youtube.com/vi/zpu9V9lUVhw/mqdefault.jpg" alt="Tokyo Cannibalism" loading="lazy">
+            <div class="song-play">&#9654;</div>
+          </div>
+          <div class="song-info">
+            <span class="song-name">Tokyo Cannibalism</span>
+            <span class="song-year">2024</span>
+          </div>
+        </a>
       </div>
     </div>
   </section>
 
   <section id="tests">
+    <div class="audio-bars audio-bars-right">
+      <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+      <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+    </div>
     <h2 class="section-title reveal">Test Constructor</h2>
+    <div class="tests-visualizer">
+      <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+      <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+      <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+      <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+    </div>
     <div class="constructor-container">
       <div class="constructor-tabs">
         <button class="tab-btn active" data-tab="api">API</button>
@@ -211,10 +336,14 @@
           <div class="form-row">
             <div class="form-group">
               <label>Method</label>
-              <select id="api-method">
-                <option value="GET">GET</option>
-                <option value="POST">POST</option>
-              </select>
+              <div class="custom-select" data-value="GET">
+                <div class="select-selected">GET</div>
+                <div class="select-options">
+                  <div class="select-option" data-value="GET">GET</div>
+                  <div class="select-option" data-value="POST">POST</div>
+                </div>
+              </div>
+              <input type="hidden" id="api-method" value="GET">
             </div>
             <div class="form-group">
               <label>Expected Status</label>
@@ -229,21 +358,29 @@
           </div>
           <div class="form-group">
             <label>Element Selector</label>
-            <select id="ui-selector">
-              <option value="header">Header</option>
-              <option value="footer">Footer</option>
-              <option value="logo">Logo</option>
-              <option value="cart">Cart Button</option>
-              <option value="products">Product Grid</option>
-            </select>
+            <div class="custom-select" data-value="header">
+              <div class="select-selected">Header</div>
+              <div class="select-options">
+                <div class="select-option" data-value="header">Header</div>
+                <div class="select-option" data-value="footer">Footer</div>
+                <div class="select-option" data-value="logo">Logo</div>
+                <div class="select-option" data-value="cart">Cart Button</div>
+                <div class="select-option" data-value="products">Product Grid</div>
+              </div>
+            </div>
+            <input type="hidden" id="ui-selector" value="header">
           </div>
           <div class="form-group">
             <label>Assertion</label>
-            <select id="ui-assertion">
-              <option value="visible">Is Visible</option>
-              <option value="exists">Exists</option>
-              <option value="text">Has Text</option>
-            </select>
+            <div class="custom-select" data-value="visible">
+              <div class="select-selected">Is Visible</div>
+              <div class="select-options">
+                <div class="select-option" data-value="visible">Is Visible</div>
+                <div class="select-option" data-value="exists">Exists</div>
+                <div class="select-option" data-value="text">Has Text</div>
+              </div>
+            </div>
+            <input type="hidden" id="ui-assertion" value="visible">
           </div>
         </div>
         <div class="tab-panel" id="panel-load">
@@ -312,5 +449,7 @@
   <script src="js/test-constructor.js"></script>
   <script src="js/chatbot.js"></script>
   <script src="js/main.js"></script>
+  <script src="js/audio.js"></script>
+  </div>
 </body>
 </html>

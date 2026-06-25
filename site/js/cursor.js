@@ -22,7 +22,7 @@
     spawnParticles(e.clientX,e.clientY,25);
   });
 
-  document.querySelectorAll('a,button,.interactive,.song-item,.album-card,.tab-btn,.run-btn').forEach(el=>{
+  document.querySelectorAll('a,button,.interactive,.song-item,.album-card,.tab-btn,.run-btn,.select-option,.select-selected').forEach(el=>{
     el.addEventListener('mouseenter',()=>document.body.classList.add('cursor-hover'));
     el.addEventListener('mouseleave',()=>document.body.classList.remove('cursor-hover'));
   });
@@ -34,7 +34,7 @@
         vx:(Math.random()-.5)*10,
         vy:(Math.random()-.5)*10,
         life:1,
-        color:['#ff0033','#00ffff','#ffffff','#ff0066','#a855f7'][Math.floor(Math.random()*5)],
+        color:['#2255ff','#00ccff','#ffffff','#4488ff','#6644cc'][Math.floor(Math.random()*5)],
         size:Math.random()*4+1
       });
     }
@@ -56,7 +56,7 @@
       const size=(i+1)/trail.length*4;
       ctx.beginPath();
       ctx.arc(t.x,t.y,size,0,Math.PI*2);
-      ctx.fillStyle=`rgba(0,255,255,${alpha})`;
+      ctx.fillStyle=`rgba(34,85,255,${alpha})`;
       ctx.fill();
     }
 

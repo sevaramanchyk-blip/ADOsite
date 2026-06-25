@@ -23,18 +23,18 @@
 @keyframes neonFlicker{
   0%,19%,21%,23%,25%,54%,56%,100%{
     text-shadow:
-      0 0 7px var(--accent-red),
-      0 0 10px var(--accent-red),
-      0 0 21px var(--accent-red),
-      0 0 42px var(--accent-neon);
+      0 0 7px var(--accent-blue),
+      0 0 10px var(--accent-blue),
+      0 0 21px var(--accent-blue),
+      0 0 42px var(--accent-blue-light);
   }
   20%,24%,55%{
     text-shadow:none;
   }
 }
 @keyframes borderGlow{
-  0%,100%{box-shadow:0 0 5px var(--accent-red)}
-  50%{box-shadow:0 0 20px var(--accent-red),0 0 40px var(--accent-neon)}
+  0%,100%{box-shadow:0 0 5px var(--accent-blue)}
+  50%{box-shadow:0 0 20px var(--accent-blue),0 0 40px var(--accent-blue-light)}
 }
 @keyframes rotate{
   from{transform:rotate(0deg)}to{transform:rotate(360deg)}
@@ -46,6 +46,14 @@
   0%,100%{transform:translateX(0)}
   10%,30%,50%,70%,90%{transform:translateX(-4px)}
   20%,40%,60%,80%{transform:translateX(4px)}
+}
+@keyframes neonLineScan{
+  0%{left:-100%}
+  100%{left:200%}
+}
+@keyframes glowPulse{
+  0%,100%{box-shadow:0 0 5px rgba(34,85,255,.2)}
+  50%{box-shadow:0 0 15px rgba(34,85,255,.4),0 0 30px rgba(34,85,255,.1)}
 }
 
 .reveal{opacity:0;transform:translateY(40px);transition:opacity .8s ease,transform .8s ease}

@@ -5,7 +5,7 @@
   font-weight:900;
   letter-spacing:10px;
   color:var(--text-primary);
-  text-shadow:0 0 10px var(--accent-red);
+  text-shadow:0 0 10px var(--accent-blue);
   animation:glitch-skew 4s infinite linear alternate-reverse;
 }
 .glitch::before,.glitch::after{
@@ -21,7 +21,7 @@
 }
 .glitch::after{
   left:-2px;
-  text-shadow:2px 0 var(--accent-red);
+  text-shadow:2px 0 var(--accent-blue);
   clip-path:inset(60% 0 0 0);
   animation:glitch-bottom 2.5s infinite linear alternate-reverse;
 }
@@ -75,5 +75,5 @@
 }
 .glitch-active .glitch{
   animation:glitch-skew 0.3s infinite linear;
-  text-shadow:0 0 30px var(--accent-red),0 0 60px var(--accent-red);
+  text-shadow:0 0 30px var(--accent-blue),0 0 60px var(--accent-blue);
 }
