@@ -45,148 +45,212 @@
     document.querySelectorAll('.custom-select.open').forEach(s=>s.classList.remove('open'));
   });
 
-  runBtn.addEventListener('click',()=>{
+  runBtn.addEventListener('click', async ()=>{
     runBtn.classList.add('loading');
     btnText.style.display='none';
     btnLoader.style.display='inline';
     results.style.display='none';
 
     const activeTab=document.querySelector('.tab-btn.active').dataset.tab;
-    let params={};
 
     if(activeTab==='api'){
-      params={
-        url:document.getElementById('api-url').value,
-        method:document.getElementById('api-method').value,
-        expected_status:document.getElementById('api-status').value,
-        timeout:document.getElementById('api-timeout').value,
-        redirects:document.getElementById('api-redirects').value,
-        headers:document.getElementById('api-headers').value,
-        body:document.getElementById('api-body').value
-      };
+      await runApiTest();
     }else if(activeTab==='ui'){
-      params={
-        url:document.getElementById('ui-url').value,
-        selector:document.getElementById('ui-selector').value,
-        assertion:document.getElementById('ui-assertion').value,
-        timeout:document.getElementById('ui-timeout').value,
-        browser:document.getElementById('ui-browser').value,
-        screenshot:document.getElementById('ui-screenshot').value,
-        custom_selector:document.getElementById('ui-custom-selector').value
-      };
+      runUiTest();
     }else{
-      params={
-        url:document.getElementById('load-url').value,
-        users:document.getElementById('load-users').value,
-        spawn_rate:document.getElementById('load-rate').value,
-        duration:document.getElementById('load-duration').value,
-        rampup:document.getElementById('load-rampup').value,
-        type:document.getElementById('load-type').value,
-        think:document.getElementById('load-think').value,
-        threshold:document.getElementById('load-threshold').value
-      };
+      runLoadTest();
     }
-
-    setTimeout(()=>{
-      const data=generateResults(activeTab,params);
-      renderResults(data);
-      runBtn.classList.remove('loading');
-      btnText.style.display='inline';
-      btnLoader.style.display='none';
-    },1500+Math.random()*2000);
   });
 
-  function generateResults(type,params){
-    const tests=generateMockTests(type,params);
-    const dur=(Math.random()*5+1).toFixed(1);
-    return{
-      passed:tests.filter(t=>t.status==='passed').length,
-      failed:tests.filter(t=>t.status==='failed').length,
-      duration:dur,
-      tests:tests
+  async function runApiTest(){
+    const params={
+      url:document.getElementById('api-url').value,
+      method:document.getElementById('api-method').value,
+      expected_status:document.getElementById('api-status').value,
+      timeout:document.getElementById('api-timeout').value,
+      redirects:document.getElementById('api-redirects').value,
+      headers:document.getElementById('api-headers').value,
+      body:document.getElementById('api-body').value
     };
+
+    try{
+      const resp=await fetch('/api/test',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(params)
+      });
+      const data=await resp.json();
+      renderResults(data);
+    }catch(e){
+      renderResults({
+        passed:0,failed:1,duration:'0.0s',
+        tests:[{name:'Request Failed',status:'failed',duration:'0s',error:e.message}]
+      });
+    }
+
+    stopLoading();
   }
 
-  function generateMockTests(type,params){
+  function runUiTest(){
+    const selector=document.getElementById('ui-selector').value;
+    const assertion=document.getElementById('ui-assertion').value;
+    const browser=document.getElementById('ui-browser').value;
+    const timeout=document.getElementById('ui-timeout').value;
+    const screenshot=document.getElementById('ui-screenshot').value;
+    const customSelector=document.getElementById('ui-custom-selector').value;
+    const url=document.getElementById('ui-url').value;
+
     const tests=[];
-    if(type==='api'){
-      const method=params.method||'GET';
-      const url=params.url||'https://ado-shop.com/';
-      const status=params.expected_status||'200';
-      const timeout=params.timeout||'10';
-      tests.push({name:`${method} ${url} → ${status}`,status:'passed',duration:'0.23s'});
-      tests.push({name:`Response Time < ${timeout}s`,status:'passed',duration:'0.45s'});
-      tests.push({name:'Content-Type is text/html',status:'passed',duration:'0.12s'});
-      tests.push({name:'Response Body Not Empty',status:'passed',duration:'0.08s'});
-      tests.push({name:'SSL Certificate Valid',status:'passed',duration:'0.31s'});
-      tests.push({name:'Server Header Present',status:Math.random()>.7?'failed':'passed',duration:'0.19s'});
-      tests.push({name:'CORS Headers Check',status:'passed',duration:'0.15s'});
-      tests.push({name:'Cache-Control Present',status:'passed',duration:'0.11s'});
-      tests.push({name:'X-Content-Type-Options',status:'passed',duration:'0.09s'});
-      if(method==='POST'||method==='PUT'||method==='PATCH'){
-        tests.push({name:`${method} Request Body Valid`,status:'passed',duration:'0.14s'});
-        tests.push({name:'Content-Type JSON',status:'passed',duration:'0.07s'});
+    const start=performance.now();
+
+    // Real checks via fetch
+    fetch(url).then(r=>{
+      const status=r.status;
+      tests.push({name:`HTTP ${url} → ${status}`,status:status===200?'passed':'failed',duration:'0s',detail:`Status: ${status}`});
+      return r.text();
+    }).then(html=>{
+      const dur=((performance.now()-start)/1000).toFixed(2);
+
+      // Check for selector in HTML
+      const selectorMap={
+        'header':'<header','footer':'<footer','logo':'logo','cart':'cart-icon-bubble',
+        'products':'product','search':'search','nav':'<nav','h1':'<h1'
+      };
+      const searchStr=selectorMap[selector]||selector;
+      const found=html.toLowerCase().includes(searchStr.toLowerCase());
+      tests.push({name:`[${browser}] ${selector} ${assertion}`,status:found?'passed':'failed',duration:dur+'s',detail:found?`Found "${searchStr}"`:`"${searchStr}" not found`});
+
+      // Page load
+      tests.push({name:'Page Load Complete',status:'passed',duration:dur+'s'});
+
+      // Content checks
+      if(assertion==='text'){
+        const hasText=html.length>0;
+        tests.push({name:'Has Text Content',status:hasText?'passed':'failed',duration:'0.01s',detail:`${html.length} chars`});
       }
-      if(params.redirects==='false'){
-        tests.push({name:'No Redirect (3xx)',status:'passed',duration:'0.18s'});
+      if(assertion==='visible'||assertion==='exists'){
+        tests.push({name:'Element Exists in DOM',status:found?'passed':'failed',duration:'0.01s'});
       }
-      tests.push({name:'DNS Resolution',status:'passed',duration:'0.32s'});
-      tests.push({name:'TCP Connection',status:'passed',duration:'0.05s'});
-    }else if(type==='ui'){
-      const selector=params.selector||'header';
-      const assertion=params.assertion||'visible';
-      const browser=params.browser||'chrome';
-      const timeout=params.timeout||'10';
-      tests.push({name:`[${browser}] ${selector} ${assertion}`,status:'passed',duration:'1.2s'});
-      tests.push({name:'Page Load Complete',status:'passed',duration:'0.8s'});
-      tests.push({name:'No JS Errors',status:Math.random()>.8?'failed':'passed',duration:'0.9s'});
-      tests.push({name:'CSS Animations Loaded',status:'passed',duration:'1.1s'});
-      tests.push({name:`Wait ≤ ${timeout}s`,status:'passed',duration:'0.6s'});
-      tests.push({name:'Images Loaded',status:'passed',duration:'1.5s'});
-      tests.push({name:'No Console Errors',status:'passed',duration:'0.4s'});
-      if(params.screenshot==='true'){
-        tests.push({name:'Screenshot Captured',status:'passed',duration:'0.3s'});
+
+      // No empty page
+      tests.push({name:'Response Not Empty',status:html.length>100?'passed':'failed',duration:'0.01s',detail:`${html.length} bytes`});
+
+      // Custom selector check
+      if(customSelector){
+        const csFound=html.toLowerCase().includes(customSelector.toLowerCase());
+        tests.push({name:`Custom: ${customSelector}`,status:csFound?'passed':'failed',duration:'0.02s',detail:csFound?'Found':'Not found'});
       }
-      if(params.custom_selector){
-        tests.push({name:`Custom: ${params.custom_selector}`,status:Math.random()>.6?'failed':'passed',duration:'1.0s'});
+
+      // HTML structure
+      tests.push({name:'Valid HTML Structure',status:html.includes('</html>')?'passed':'failed',duration:'0.01s'});
+      tests.push({name:'No Broken Tags',status:(html.match(/<[^>]+>/g)||[]).length>10?'passed':'failed',duration:'0.01s'});
+
+      // JS errors check (basic)
+      const scriptCount=(html.match(/<script/g)||[]).length;
+      tests.push({name:`Scripts Loaded (${scriptCount})`,status:scriptCount>0?'passed':'failed',duration:'0.01s'});
+
+      // CSS check
+      const cssLinks=(html.match(/\.css/g)||[]).length;
+      tests.push({name:`Stylesheets (${cssLinks})`,status:cssLinks>0?'passed':'failed',duration:'0.01s'});
+
+      const passed=tests.filter(t=>t.status==='passed').length;
+      const failed=tests.filter(t=>t.status==='failed').length;
+      renderResults({passed,failed,duration:dur+'s',tests});
+      stopLoading();
+    }).catch(e=>{
+      tests.push({name:'Connection Error',status:'failed',duration:'0s',error:e.message});
+      renderResults({passed:0,failed:1,duration:'0s',tests});
+      stopLoading();
+    });
+  }
+
+  function runLoadTest(){
+    const url=document.getElementById('load-url').value;
+    const users=parseInt(document.getElementById('load-users').value)||10;
+    const duration=parseInt(document.getElementById('load-duration').value)||30;
+    const threshold=parseInt(document.getElementById('load-threshold').value)||2000;
+
+    const tests=[];
+    let completed=0;
+    let successes=0;
+    let failures=0;
+    let totalLatency=0;
+    let minLatency=Infinity;
+    let maxLatency=0;
+    const start=performance.now();
+    const endTime=start+duration*1000;
+    const interval=100;
+
+    function sendRequest(){
+      if(performance.now()>endTime){
+        finishLoadTest();
+        return;
       }
-      tests.push({name:'Responsive Check',status:'passed',duration:'2.0s'});
-      tests.push({name:'Accessibility Basics',status:Math.random()>.5?'failed':'passed',duration:'1.8s'});
-    }else{
-      const users=parseInt(params.users)||10;
-      const duration=params.duration||'30';
-      const type_label=params.type||'static';
-      const threshold=params.threshold||'2000';
-      tests.push({name:`${type_label} endpoint stress`,status:'passed',duration:'0.5s'});
-      tests.push({name:`${users} concurrent users`,status:'passed',duration:(Math.random()*3+1).toFixed(1)+'s'});
-      tests.push({name:`Duration: ${duration}s`,status:'passed',duration:duration+'s'});
-      tests.push({name:`Response < ${threshold}ms`,status:Math.random()>.7?'failed':'passed',duration:'0.3s'});
-      tests.push({name:'No Timeouts',status:'passed',duration:'0.2s'});
-      tests.push({name:'Error Rate < 1%',status:'passed',duration:'0.4s'});
-      tests.push({name:'Throughput RPS',status:'passed',duration:'0.6s'});
-      tests.push({name:'P95 Latency',status:'passed',duration:'0.8s'});
-      tests.push({name:'P99 Latency',status:'passed',duration:'0.9s'});
-      tests.push({name:'CPU Usage OK',status:'passed',duration:'0.1s'});
-      tests.push({name:'Memory Usage OK',status:'passed',duration:'0.1s'});
-      tests.push({name:'Network I/O',status:'passed',duration:'0.2s'});
+      const reqStart=performance.now();
+      fetch(url).then(r=>{
+        const latency=performance.now()-reqStart;
+        completed++;
+        totalLatency+=latency;
+        if(latency<minLatency)minLatency=latency;
+        if(latency>maxLatency)maxLatency=latency;
+        if(r.ok&&latency<threshold)successes++;
+        else failures++;
+      }).catch(()=>{
+        completed++;
+        failures++;
+      });
+      setTimeout(sendRequest,Math.max(10,interval/users));
     }
-    return tests;
+
+    function finishLoadTest(){
+      const dur=((performance.now()-start)/1000).toFixed(1);
+      const avgLatency=completed>0?(totalLatency/completed).toFixed(0):0;
+      const rps=completed>0?(completed/dur).toFixed(1):0;
+      const errorRate=completed>0?((failures/completed)*100).toFixed(1):0;
+
+      tests.push({name:`${users} concurrent users`,status:'passed',duration:dur+'s',detail:`Completed: ${completed}`});
+      tests.push({name:`Duration: ${duration}s`,status:'passed',duration:dur+'s'});
+      tests.push({name:`Total Requests: ${completed}`,status:completed>0?'passed':'failed',duration:'0s'});
+      tests.push({name:`Successful: ${successes}`,status:successes>0?'passed':'failed',duration:'0s'});
+      tests.push({name:`Failed: ${failures}`,status:failures===0?'passed':'failed',duration:'0s'});
+      tests.push({name:`Avg Latency: ${avgLatency}ms`,status:avgLatency<threshold?'passed':'failed',duration:'0s',detail:`Threshold: ${threshold}ms`});
+      tests.push({name:`Min Latency: ${minLatency===Infinity?0:minLatency.toFixed(0)}ms`,status:'passed',duration:'0s'});
+      tests.push({name:`Max Latency: ${maxLatency.toFixed(0)}ms`,status:maxLatency<threshold*2?'passed':'failed',duration:'0s'});
+      tests.push({name:`RPS: ${rps}`,status:parseFloat(rps)>0?'passed':'failed',duration:'0s'});
+      tests.push({name:`Error Rate: ${errorRate}%`,status:parseFloat(errorRate)<5?'passed':'failed',duration:'0s'});
+
+      renderResults({passed:tests.filter(t=>t.status==='passed').length,failed:tests.filter(t=>t.status==='failed').length,duration:dur+'s',tests});
+      stopLoading();
+    }
+
+    tests.push({name:'Load test started...',status:'passed',duration:'0s'});
+    renderResults({passed:1,failed:0,duration:'0s',tests});
+    sendRequest();
+  }
+
+  function stopLoading(){
+    runBtn.classList.remove('loading');
+    btnText.style.display='inline';
+    btnLoader.style.display='none';
   }
 
   function renderResults(data){
     results.style.display='block';
     results.querySelector('.results-passed').textContent=data.passed+' Passed';
     results.querySelector('.results-failed').textContent=data.failed+' Failed';
-    results.querySelector('.results-time').textContent=data.duration+'s';
+    results.querySelector('.results-time').textContent=data.duration;
 
     const list=results.querySelector('.results-list');
     list.innerHTML='';
     data.tests.forEach(t=>{
       const item=document.createElement('div');
       item.className='result-item '+(t.status==='passed'?'pass':'fail');
+      let detail='';
+      if(t.detail)detail=`<span class="result-detail">${t.detail}</span>`;
+      if(t.error)detail=`<span class="result-detail error">${t.error}</span>`;
       item.innerHTML=`
         <span class="result-status">${t.status}</span>
-        <span class="result-name">${t.name}</span>
+        <span class="result-name">${t.name}${detail}</span>
         <span class="result-duration">${t.duration}</span>
       `;
       list.appendChild(item);

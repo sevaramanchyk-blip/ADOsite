@@ -274,6 +274,278 @@ class TestApiHeadersExtended:
 
 
 @allure.feature("API тесты")
+@allure.story("HTTP методы PUT/PATCH/DELETE")
+class TestHttpMethods:
+    """Проверка обработки HTTP-методов PUT, PATCH, DELETE."""
+
+    ENDPOINTS = [
+        "/",
+        "/products.json",
+        "/collections.json",
+        "/cart.json",
+        "/search?q=ado&type=product",
+        "/collections/shinzou",
+    ]
+
+    PUT_BODY = {
+        "product": {
+            "title": "Test Product",
+            "body_html": "<p>Test description</p>",
+            "vendor": "ADO Shop",
+            "product_type": "T-Shirt",
+            "tags": ["test", "api"],
+            "variants": [
+                {
+                    "title": "Default",
+                    "price": "19.99",
+                    "sku": "TEST-001",
+                    "inventory_quantity": 10
+                }
+            ]
+        }
+    }
+
+    PATCH_BODY = {
+        "product": {
+            "id": 123456789,
+            "title": "Updated Product",
+            "variants": [
+                {
+                    "id": 987654321,
+                    "price": "24.99"
+                }
+            ]
+        }
+    }
+
+    DELETE_BODY = {
+        "product_ids": [123456789]
+    }
+
+    @allure.title("PUT на публичные эндпоинты возвращает 403")
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    def test_put_returns_403(self, endpoint):
+        response = requests.put(
+            f"{BASE_URL}{endpoint}",
+            headers={"Content-Type": "application/json"},
+            json=self.PUT_BODY,
+        )
+        assert response.status_code == 403, (
+            f"PUT {endpoint}: ожидатель 403, "
+            f"получен {response.status_code}"
+        )
+
+    @allure.title("PUT на публичные эндпоинты возвращает 404")
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    def test_put_returns_404(self, endpoint):
+        response = requests.put(
+            f"{BASE_URL}{endpoint}",
+            headers={"Content-Type": "application/json"},
+            json=self.PUT_BODY,
+        )
+        assert response.status_code == 404, (
+            f"PUT {endpoint}: ожидатель 404, "
+            f"получен {response.status_code}"
+        )
+
+    @allure.title("PUT на публичные эндпоинты возвращает 405")
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    def test_put_returns_405(self, endpoint):
+        response = requests.put(
+            f"{BASE_URL}{endpoint}",
+            headers={"Content-Type": "application/json"},
+            json=self.PUT_BODY,
+        )
+        assert response.status_code == 405, (
+            f"PUT {endpoint}: ожидатель 405, "
+            f"получен {response.status_code}"
+        )
+
+    @allure.title("PATCH на публичные эндпоинты возвращает 403")
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    def test_patch_returns_403(self, endpoint):
+        response = requests.patch(
+            f"{BASE_URL}{endpoint}",
+            headers={"Content-Type": "application/json"},
+            json=self.PATCH_BODY,
+        )
+        assert response.status_code == 403, (
+            f"PATCH {endpoint}: ожидатель 403, "
+            f"получен {response.status_code}"
+        )
+
+    @allure.title("PATCH на публичные эндпоинты возвращает 404")
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    def test_patch_returns_404(self, endpoint):
+        response = requests.patch(
+            f"{BASE_URL}{endpoint}",
+            headers={"Content-Type": "application/json"},
+            json=self.PATCH_BODY,
+        )
+        assert response.status_code == 404, (
+            f"PATCH {endpoint}: ожидатель 404, "
+            f"получен {response.status_code}"
+        )
+
+    @allure.title("PATCH на публичные эндпоинты возвращает 405")
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    def test_patch_returns_405(self, endpoint):
+        response = requests.patch(
+            f"{BASE_URL}{endpoint}",
+            headers={"Content-Type": "application/json"},
+            json=self.PATCH_BODY,
+        )
+        assert response.status_code == 405, (
+            f"PATCH {endpoint}: ожидатель 405, "
+            f"получен {response.status_code}"
+        )
+
+    @allure.title("DELETE на публичные эндпоинты возвращает 403")
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    def test_delete_returns_403(self, endpoint):
+        response = requests.delete(
+            f"{BASE_URL}{endpoint}",
+            headers={"Content-Type": "application/json"},
+            json=self.DELETE_BODY,
+        )
+        assert response.status_code == 403, (
+            f"DELETE {endpoint}: ожидатель 403, "
+            f"получен {response.status_code}"
+        )
+
+    @allure.title("DELETE на публичные эндпоинты возвращает 404")
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    def test_delete_returns_404(self, endpoint):
+        response = requests.delete(
+            f"{BASE_URL}{endpoint}",
+            headers={"Content-Type": "application/json"},
+            json=self.DELETE_BODY,
+        )
+        assert response.status_code == 404, (
+            f"DELETE {endpoint}: ожидатель 404, "
+            f"получен {response.status_code}"
+        )
+
+    @allure.title("DELETE на публичные эндпоинты возвращает 405")
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    def test_delete_returns_405(self, endpoint):
+        response = requests.delete(
+            f"{BASE_URL}{endpoint}",
+            headers={"Content-Type": "application/json"},
+            json=self.DELETE_BODY,
+        )
+        assert response.status_code == 405, (
+            f"DELETE {endpoint}: ожидатель 405, "
+            f"получен {response.status_code}"
+        )
+
+    @allure.title("PUT на cart/add.js возвращает 403")
+    def test_put_cart_add_returns_403(self):
+        response = requests.put(
+            f"{BASE_URL}/cart/add.js",
+            headers={"Content-Type": "application/json"},
+            json={"items": [{"id": 123456, "quantity": 1}]},
+        )
+        assert response.status_code == 403, (
+            f"PUT cart/add.js: ожидатель 403, "
+            f"получен {response.status_code}"
+        )
+
+    @allure.title("PUT на cart/add.js возвращает 404")
+    def test_put_cart_add_returns_404(self):
+        response = requests.put(
+            f"{BASE_URL}/cart/add.js",
+            headers={"Content-Type": "application/json"},
+            json={"items": [{"id": 123456, "quantity": 1}]},
+        )
+        assert response.status_code == 404, (
+            f"PUT cart/add.js: ожидатель 404, "
+            f"получен {response.status_code}"
+        )
+
+    @allure.title("PUT на cart/add.js возвращает 405")
+    def test_put_cart_add_returns_405(self):
+        response = requests.put(
+            f"{BASE_URL}/cart/add.js",
+            headers={"Content-Type": "application/json"},
+            json={"items": [{"id": 123456, "quantity": 1}]},
+        )
+        assert response.status_code == 405, (
+            f"PUT cart/add.js: ожидатель 405, "
+            f"получен {response.status_code}"
+        )
+
+    @allure.title("DELETE на cart/clear.js возвращает 403")
+    def test_delete_cart_clear_returns_403(self):
+        response = requests.delete(
+            f"{BASE_URL}/cart/clear.js",
+            headers={"Content-Type": "application/json"},
+        )
+        assert response.status_code == 403, (
+            f"DELETE cart/clear.js: ожидатель 403, "
+            f"получен {response.status_code}"
+        )
+
+    @allure.title("DELETE на cart/clear.js возвращает 404")
+    def test_delete_cart_clear_returns_404(self):
+        response = requests.delete(
+            f"{BASE_URL}/cart/clear.js",
+            headers={"Content-Type": "application/json"},
+        )
+        assert response.status_code == 404, (
+            f"DELETE cart/clear.js: ожидатель 404, "
+            f"получен {response.status_code}"
+        )
+
+    @allure.title("DELETE на cart/clear.js возвращает 405")
+    def test_delete_cart_clear_returns_405(self):
+        response = requests.delete(
+            f"{BASE_URL}/cart/clear.js",
+            headers={"Content-Type": "application/json"},
+        )
+        assert response.status_code == 405, (
+            f"DELETE cart/clear.js: ожидатель 405, "
+            f"получен {response.status_code}"
+        )
+
+    @allure.title("PATCH на cart/update.js возвращает 403")
+    def test_patch_cart_update_returns_403(self):
+        response = requests.patch(
+            f"{BASE_URL}/cart/update.js",
+            headers={"Content-Type": "application/json"},
+            json={"updates": {"123456": 2}},
+        )
+        assert response.status_code == 403, (
+            f"PATCH cart/update.js: ожидатель 403, "
+            f"получен {response.status_code}"
+        )
+
+    @allure.title("PATCH на cart/update.js возвращает 404")
+    def test_patch_cart_update_returns_404(self):
+        response = requests.patch(
+            f"{BASE_URL}/cart/update.js",
+            headers={"Content-Type": "application/json"},
+            json={"updates": {"123456": 2}},
+        )
+        assert response.status_code == 404, (
+            f"PATCH cart/update.js: ожидатель 404, "
+            f"получен {response.status_code}"
+        )
+
+    @allure.title("PATCH на cart/update.js возвращает 405")
+    def test_patch_cart_update_returns_405(self):
+        response = requests.patch(
+            f"{BASE_URL}/cart/update.js",
+            headers={"Content-Type": "application/json"},
+            json={"updates": {"123456": 2}},
+        )
+        assert response.status_code == 405, (
+            f"PATCH cart/update.js: ожидатель 405, "
+            f"получен {response.status_code}"
+        )
+
+
+@allure.feature("API тесты")
 @allure.story("Контент страниц")
 class TestApiContentExtended:
     """Расширенная проверка контента страниц."""

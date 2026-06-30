@@ -208,6 +208,11 @@ MAIN_MENU = InlineKeyboardMarkup([
             "🛒 Магазин ADO", callback_data="about_site"
         ),
     ],
+    [
+        InlineKeyboardButton(
+            "📇 Визитка", callback_data="contact_card"
+        ),
+    ],
 ])
 
 
@@ -802,6 +807,41 @@ async def callback_about_site(
     )
 
 
+async def callback_contact_card(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    """Обработчик кнопки 'Визитка' — контактная карточка QA-инженера."""
+    query = update.callback_query
+    chat_id = query.message.chat_id
+    await query.answer()
+    await cleanup_messages(
+        context, chat_id, context.user_data,
+        except_id=query.message.message_id
+    )
+    await query.edit_message_text(
+        f"📇 <b>Визитка</b>\n{SEP}\n\n"
+        f"👤 <b>Всеволод Романчик</b>\n"
+        f"💼 QA Automation Engineer\n\n"
+        f"━━━━ <b>Контакты</b> ━━━━\n"
+        f"📧 seva.ramanchyk@gmail.com\n"
+        f"📱 +375 (44) 758-27-67\n"
+        f"📍 Минск, Беларусь\n\n"
+        f"━━━━ <b>Навыки</b> ━━━━\n"
+        f"🔹 Python / pytest — ⭐⭐⭐⭐\n"
+        f"🔹 UI-автоматизация (Selenium) — ⭐⭐⭐⭐\n"
+        f"🔹 API-тестирование (REST) — ⭐⭐⭐⭐\n"
+        f"🔹 Allure / BDD (Cucumber) — ⭐⭐⭐⭐\n"
+        f"🔹 CI/CD (GitHub Actions) — ⭐⭐⭐\n"
+        f"🔹 Docker — ⭐⭐⭐\n\n"
+        f"━━━━ <b>Инструменты</b> ━━━━\n"
+        f"PyCharm, VS Code, Postman,\n"
+        f"Swagger, Jira, TestRail, Playwright\n\n"
+        f"🌐 <a href=\"https://ado-shop.com\">Сайт проекта</a>",
+        parse_mode='HTML',
+        reply_markup=MAIN_MENU
+    )
+
+
 async def callback_run_all(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
@@ -938,7 +978,7 @@ async def run_load_command(
         '⚡ Запуск нагрузочного теста (~30 сек)...'
     )
     await track_message(context, chat_id, msg, context.user_data)
-    from load_tests.run_load_test import run_load_test
+    from tests.load_tests.run_load_test import run_load_test
     # Запуск блокирующей функции в отдельном потоке через executor
     loop = asyncio.get_event_loop()
     result = await loop.run_in_executor(
@@ -968,7 +1008,7 @@ async def callback_run_load(
         '⚡ Запуск нагрузочного теста (~30 сек)...'
     )
     await track_message(context, chat_id, msg, context.user_data)
-    from load_tests.run_load_test import run_load_test
+    from tests.load_tests.run_load_test import run_load_test
     loop = asyncio.get_event_loop()
     result = await loop.run_in_executor(
         None, run_load_test, 10, 5, "30s"
@@ -1051,6 +1091,11 @@ def main() -> None:
     application.add_handler(
         CallbackQueryHandler(
             callback_about_site, pattern="^about_site$"
+        )
+    )
+    application.add_handler(
+        CallbackQueryHandler(
+            callback_contact_card, pattern="^contact_card$"
         )
     )
     application.add_handler(

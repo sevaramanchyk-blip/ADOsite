@@ -210,6 +210,14 @@
 .result-item.pass .result-status{color:#4caf50}
 .result-item.fail .result-status{color:var(--accent-red)}
 .result-name{flex:1}
+.result-detail{
+  display:block;
+  font-size:.75rem;
+  color:var(--text-secondary);
+  margin-top:.2rem;
+  font-family:monospace;
+}
+.result-detail.error{color:var(--accent-red)}
 .result-duration{color:var(--text-secondary);font-size:.8rem}
 
 @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
