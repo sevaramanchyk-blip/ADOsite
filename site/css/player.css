@@ -1,9 +1,9 @@
 .player-container{
   max-width:1100px;width:100%;
   background:var(--bg-card);
-  border:1px solid rgba(34,85,255,calc(.12 + var(--audio-volume)*.2));
+  border:1px solid rgba(34,85,255,calc(.12 + var(--audio-volume) * .2));
   padding:2rem;
-  box-shadow:0 0 40px rgba(34,85,255,calc(.05 + var(--audio-bass)*.15)),inset 0 1px 0 rgba(34,85,255,.08);
+  box-shadow:0 0 40px rgba(34,85,255,calc(.05 + var(--audio-bass) * .15)),inset 0 1px 0 rgba(34,85,255,.08);
 }
 #player{
   border-top:1px solid rgba(34,85,255,.06);
@@ -14,18 +14,18 @@
 #player::after{
   content:'';position:absolute;bottom:0;left:5%;right:5%;height:1px;
   background:linear-gradient(90deg,
-    rgba(34,85,255,calc(.4 + var(--audio-volume)*.6)),
-    rgba(68,136,255,calc(.5 + var(--audio-bass)*.5)),
-    rgba(0,204,255,calc(.4 + var(--audio-mid)*.6)),
-    rgba(34,85,255,calc(.4 + var(--audio-volume)*.6))
+    rgba(34,85,255,calc(.4 + var(--audio-volume) * .6)),
+    rgba(68,136,255,calc(.5 + var(--audio-bass) * .5)),
+    rgba(0,204,255,calc(.4 + var(--audio-mid) * .6)),
+    rgba(34,85,255,calc(.4 + var(--audio-volume) * .6))
   );
   background-size:300% 100%;
   animation:neonShift 4s ease-in-out infinite;
   box-shadow:
-    0 0 4px rgba(34,85,255,calc(.5 + var(--audio-volume)*.5)),
-    0 0 10px rgba(68,136,255,calc(.35 + var(--audio-bass)*.4)),
-    0 0 20px rgba(0,204,255,calc(.2 + var(--audio-mid)*.3)),
-    0 0 40px rgba(34,85,255,calc(.1 + var(--audio-volume)*.2));
+    0 0 4px rgba(34,85,255,calc(.5 + var(--audio-volume) * .5)),
+    0 0 10px rgba(68,136,255,calc(.35 + var(--audio-bass) * .4)),
+    0 0 20px rgba(0,204,255,calc(.2 + var(--audio-mid) * .3)),
+    0 0 40px rgba(34,85,255,calc(.1 + var(--audio-volume) * .2));
   z-index:1;
 }
 .player-visualizer{
@@ -90,11 +90,11 @@
   font-size:1.2rem;
   transition:transform .3s,box-shadow .3s;
   pointer-events:none;
-  box-shadow:0 0 15px rgba(34,85,255,calc(.4 + var(--audio-volume)*.4));
+  box-shadow:0 0 15px rgba(34,85,255,calc(.4 + var(--audio-volume) * .4));
 }
 .song-card:hover .song-play{
   transform:translate(-50%,-50%) scale(1);
-  box-shadow:0 0 25px rgba(34,85,255,calc(.6 + var(--audio-volume)*.4)),0 0 50px rgba(34,85,255,.2);
+  box-shadow:0 0 25px rgba(34,85,255,calc(.6 + var(--audio-volume) * .4)),0 0 50px rgba(34,85,255,.2);
 }
 .song-info{
   padding:.8rem 1rem;

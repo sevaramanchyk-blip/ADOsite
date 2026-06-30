@@ -341,14 +341,53 @@
                 <div class="select-options">
                   <div class="select-option" data-value="GET">GET</div>
                   <div class="select-option" data-value="POST">POST</div>
+                  <div class="select-option" data-value="PUT">PUT</div>
+                  <div class="select-option" data-value="DELETE">DELETE</div>
+                  <div class="select-option" data-value="PATCH">PATCH</div>
                 </div>
               </div>
               <input type="hidden" id="api-method" value="GET">
             </div>
             <div class="form-group">
               <label>Expected Status</label>
-              <input type="text" id="api-status" value="200" placeholder="200">
+              <div class="custom-select" data-value="200">
+                <div class="select-selected">200</div>
+                <div class="select-options">
+                  <div class="select-option" data-value="200">200 OK</div>
+                  <div class="select-option" data-value="201">201 Created</div>
+                  <div class="select-option" data-value="301">301 Redirect</div>
+                  <div class="select-option" data-value="302">302 Found</div>
+                  <div class="select-option" data-value="404">404 Not Found</div>
+                  <div class="select-option" data-value="500">500 Server Error</div>
+                </div>
+              </div>
+              <input type="hidden" id="api-status" value="200">
             </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Timeout (sec)</label>
+              <input type="number" id="api-timeout" value="10" min="1" max="60">
+            </div>
+            <div class="form-group">
+              <label>Follow Redirects</label>
+              <div class="custom-select" data-value="true">
+                <div class="select-selected">Yes</div>
+                <div class="select-options">
+                  <div class="select-option" data-value="true">Yes</div>
+                  <div class="select-option" data-value="false">No</div>
+                </div>
+              </div>
+              <input type="hidden" id="api-redirects" value="true">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Custom Headers (JSON)</label>
+            <input type="text" id="api-headers" value='{"User-Agent": "ADO-TestBot"}' placeholder='{"Authorization": "Bearer ..."}'>
+          </div>
+          <div class="form-group">
+            <label>Request Body (POST/PUT)</label>
+            <textarea id="api-body" class="form-textarea" rows="3" placeholder='{"key": "value"}'></textarea>
           </div>
         </div>
         <div class="tab-panel" id="panel-ui">
@@ -356,34 +395,79 @@
             <label>Page URL</label>
             <input type="text" id="ui-url" value="https://ado-shop.com/" placeholder="https://ado-shop.com/">
           </div>
-          <div class="form-group">
-            <label>Element Selector</label>
-            <div class="custom-select" data-value="header">
-              <div class="select-selected">Header</div>
-              <div class="select-options">
-                <div class="select-option" data-value="header">Header</div>
-                <div class="select-option" data-value="footer">Footer</div>
-                <div class="select-option" data-value="logo">Logo</div>
-                <div class="select-option" data-value="cart">Cart Button</div>
-                <div class="select-option" data-value="products">Product Grid</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Element Selector</label>
+              <div class="custom-select" data-value="header">
+                <div class="select-selected">Header</div>
+                <div class="select-options">
+                  <div class="select-option" data-value="header">Header</div>
+                  <div class="select-option" data-value="footer">Footer</div>
+                  <div class="select-option" data-value="logo">Logo</div>
+                  <div class="select-option" data-value="cart">Cart Button</div>
+                  <div class="select-option" data-value="products">Product Grid</div>
+                  <div class="select-option" data-value="search">Search Input</div>
+                  <div class="select-option" data-value="nav">Navigation</div>
+                  <div class="select-option" data-value="h1">H1 Title</div>
+                </div>
               </div>
+              <input type="hidden" id="ui-selector" value="header">
             </div>
-            <input type="hidden" id="ui-selector" value="header">
+            <div class="form-group">
+              <label>Assertion</label>
+              <div class="custom-select" data-value="visible">
+                <div class="select-selected">Is Visible</div>
+                <div class="select-options">
+                  <div class="select-option" data-value="visible">Is Visible</div>
+                  <div class="select-option" data-value="exists">Exists</div>
+                  <div class="select-option" data-value="text">Has Text</div>
+                  <div class="select-option" data-value="enabled">Is Enabled</div>
+                  <div class="select-option" data-value="clickable">Is Clickable</div>
+                  <div class="select-option" data-value="hidden">Is Hidden</div>
+                </div>
+              </div>
+              <input type="hidden" id="ui-assertion" value="visible">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Wait Timeout (sec)</label>
+              <input type="number" id="ui-timeout" value="10" min="3" max="30">
+            </div>
+            <div class="form-group">
+              <label>Browser</label>
+              <div class="custom-select" data-value="chrome">
+                <div class="select-selected">Chrome</div>
+                <div class="select-options">
+                  <div class="select-option" data-value="chrome">Chrome</div>
+                  <div class="select-option" data-value="firefox">Firefox</div>
+                  <div class="select-option" data-value="edge">Edge</div>
+                </div>
+              </div>
+              <input type="hidden" id="ui-browser" value="chrome">
+            </div>
           </div>
           <div class="form-group">
-            <label>Assertion</label>
-            <div class="custom-select" data-value="visible">
-              <div class="select-selected">Is Visible</div>
+            <label>Screenshot on Failure</label>
+            <div class="custom-select" data-value="true">
+              <div class="select-selected">Yes</div>
               <div class="select-options">
-                <div class="select-option" data-value="visible">Is Visible</div>
-                <div class="select-option" data-value="exists">Exists</div>
-                <div class="select-option" data-value="text">Has Text</div>
+                <div class="select-option" data-value="true">Yes</div>
+                <div class="select-option" data-value="false">No</div>
               </div>
             </div>
-            <input type="hidden" id="ui-assertion" value="visible">
+            <input type="hidden" id="ui-screenshot" value="true">
+          </div>
+          <div class="form-group">
+            <label>Custom CSS Selector</label>
+            <input type="text" id="ui-custom-selector" placeholder=".product-card, #my-id, [data-test]">
           </div>
         </div>
         <div class="tab-panel" id="panel-load">
+          <div class="form-group">
+            <label>Target URL</label>
+            <input type="text" id="load-url" value="https://ado-shop.com/" placeholder="https://ado-shop.com/">
+          </div>
           <div class="form-row">
             <div class="form-group">
               <label>Concurrent Users</label>
@@ -394,9 +478,37 @@
               <input type="number" id="load-rate" value="5" min="1" max="50">
             </div>
           </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Duration (seconds)</label>
+              <input type="number" id="load-duration" value="30" min="5" max="300">
+            </div>
+            <div class="form-group">
+              <label>Ramp Up (sec)</label>
+              <input type="number" id="load-rampup" value="5" min="0" max="60">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Request Type</label>
+              <div class="custom-select" data-value="static">
+                <div class="select-selected">Static Pages</div>
+                <div class="select-options">
+                  <div class="select-option" data-value="static">Static Pages</div>
+                  <div class="select-option" data-value="api">API Endpoints</div>
+                  <div class="select-option" data-value="mixed">Mixed</div>
+                </div>
+              </div>
+              <input type="hidden" id="load-type" value="static">
+            </div>
+            <div class="form-group">
+              <label>Think Time (sec)</label>
+              <input type="number" id="load-think" value="1" min="0" max="10" step="0.5">
+            </div>
+          </div>
           <div class="form-group">
-            <label>Duration (seconds)</label>
-            <input type="number" id="load-duration" value="30" min="5" max="300">
+            <label>Response Time Threshold (ms)</label>
+            <input type="number" id="load-threshold" value="2000" min="100" max="30000" step="100">
           </div>
         </div>
       </div>
@@ -421,6 +533,8 @@
       <p class="footer-jp">アドを応援しています</p>
     </div>
   </footer>
+
+  </div>
 
   <div id="chatbot-widget" class="chatbot-closed">
     <button id="chat-close" class="chat-close-btn">&times;</button>
@@ -450,6 +564,5 @@
   <script src="js/chatbot.js"></script>
   <script src="js/main.js"></script>
   <script src="js/audio.js"></script>
-  </div>
 </body>
 </html>

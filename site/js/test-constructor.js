@@ -58,19 +58,32 @@
       params={
         url:document.getElementById('api-url').value,
         method:document.getElementById('api-method').value,
-        expected_status:document.getElementById('api-status').value
+        expected_status:document.getElementById('api-status').value,
+        timeout:document.getElementById('api-timeout').value,
+        redirects:document.getElementById('api-redirects').value,
+        headers:document.getElementById('api-headers').value,
+        body:document.getElementById('api-body').value
       };
     }else if(activeTab==='ui'){
       params={
         url:document.getElementById('ui-url').value,
         selector:document.getElementById('ui-selector').value,
-        assertion:document.getElementById('ui-assertion').value
+        assertion:document.getElementById('ui-assertion').value,
+        timeout:document.getElementById('ui-timeout').value,
+        browser:document.getElementById('ui-browser').value,
+        screenshot:document.getElementById('ui-screenshot').value,
+        custom_selector:document.getElementById('ui-custom-selector').value
       };
     }else{
       params={
+        url:document.getElementById('load-url').value,
         users:document.getElementById('load-users').value,
         spawn_rate:document.getElementById('load-rate').value,
-        duration:document.getElementById('load-duration').value
+        duration:document.getElementById('load-duration').value,
+        rampup:document.getElementById('load-rampup').value,
+        type:document.getElementById('load-type').value,
+        think:document.getElementById('load-think').value,
+        threshold:document.getElementById('load-threshold').value
       };
     }
 
@@ -84,7 +97,7 @@
   });
 
   function generateResults(type,params){
-    const tests=generateMockTests(type);
+    const tests=generateMockTests(type,params);
     const dur=(Math.random()*5+1).toFixed(1);
     return{
       passed:tests.filter(t=>t.status==='passed').length,
@@ -94,28 +107,68 @@
     };
   }
 
-  function generateMockTests(type){
+  function generateMockTests(type,params){
     const tests=[];
     if(type==='api'){
-      tests.push({name:'GET / Status Code 200',status:'passed',duration:'0.23s'});
-      tests.push({name:'GET / Response Time < 2s',status:'passed',duration:'0.45s'});
-      tests.push({name:'GET / Content Contains Title',status:'passed',duration:'0.12s'});
-      tests.push({name:'GET /collections/shinzou Returns 200',status:'passed',duration:'0.31s'});
-      tests.push({name:'POST /cart Invalid Method',status:'passed',duration:'0.08s'});
-      tests.push({name:'GET /nonexistent 404',status:Math.random()>.7?'failed':'passed',duration:'0.15s'});
-      tests.push({name:'GET /products.json Valid JSON',status:'passed',duration:'0.67s'});
-      tests.push({name:'GET / Header Security Check',status:'passed',duration:'0.19s'});
-    }else if(type==='ui'){
-      tests.push({name:'Header Is Visible',status:'passed',duration:'1.2s'});
-      tests.push({name:'Logo Image Loaded',status:'passed',duration:'0.8s'});
-      tests.push({name:'Footer Contains Copyright',status:'passed',duration:'0.9s'});
-      tests.push({name:'Cart Button Clickable',status:'passed',duration:'1.1s'});
-      tests.push({name:'Products Grid Displayed',status:'passed',duration:'1.5s'});
-      tests.push({name:'Search Modal Opens',status:Math.random()>.8?'failed':'passed',duration:'2.0s'});
-    }else{
-      for(let i=1;i<=10;i++){
-        tests.push({name:`User ${i} Session`,status:'passed',duration:(Math.random()*3+1).toFixed(1)+'s'});
+      const method=params.method||'GET';
+      const url=params.url||'https://ado-shop.com/';
+      const status=params.expected_status||'200';
+      const timeout=params.timeout||'10';
+      tests.push({name:`${method} ${url} → ${status}`,status:'passed',duration:'0.23s'});
+      tests.push({name:`Response Time < ${timeout}s`,status:'passed',duration:'0.45s'});
+      tests.push({name:'Content-Type is text/html',status:'passed',duration:'0.12s'});
+      tests.push({name:'Response Body Not Empty',status:'passed',duration:'0.08s'});
+      tests.push({name:'SSL Certificate Valid',status:'passed',duration:'0.31s'});
+      tests.push({name:'Server Header Present',status:Math.random()>.7?'failed':'passed',duration:'0.19s'});
+      tests.push({name:'CORS Headers Check',status:'passed',duration:'0.15s'});
+      tests.push({name:'Cache-Control Present',status:'passed',duration:'0.11s'});
+      tests.push({name:'X-Content-Type-Options',status:'passed',duration:'0.09s'});
+      if(method==='POST'||method==='PUT'||method==='PATCH'){
+        tests.push({name:`${method} Request Body Valid`,status:'passed',duration:'0.14s'});
+        tests.push({name:'Content-Type JSON',status:'passed',duration:'0.07s'});
       }
+      if(params.redirects==='false'){
+        tests.push({name:'No Redirect (3xx)',status:'passed',duration:'0.18s'});
+      }
+      tests.push({name:'DNS Resolution',status:'passed',duration:'0.32s'});
+      tests.push({name:'TCP Connection',status:'passed',duration:'0.05s'});
+    }else if(type==='ui'){
+      const selector=params.selector||'header';
+      const assertion=params.assertion||'visible';
+      const browser=params.browser||'chrome';
+      const timeout=params.timeout||'10';
+      tests.push({name:`[${browser}] ${selector} ${assertion}`,status:'passed',duration:'1.2s'});
+      tests.push({name:'Page Load Complete',status:'passed',duration:'0.8s'});
+      tests.push({name:'No JS Errors',status:Math.random()>.8?'failed':'passed',duration:'0.9s'});
+      tests.push({name:'CSS Animations Loaded',status:'passed',duration:'1.1s'});
+      tests.push({name:`Wait ≤ ${timeout}s`,status:'passed',duration:'0.6s'});
+      tests.push({name:'Images Loaded',status:'passed',duration:'1.5s'});
+      tests.push({name:'No Console Errors',status:'passed',duration:'0.4s'});
+      if(params.screenshot==='true'){
+        tests.push({name:'Screenshot Captured',status:'passed',duration:'0.3s'});
+      }
+      if(params.custom_selector){
+        tests.push({name:`Custom: ${params.custom_selector}`,status:Math.random()>.6?'failed':'passed',duration:'1.0s'});
+      }
+      tests.push({name:'Responsive Check',status:'passed',duration:'2.0s'});
+      tests.push({name:'Accessibility Basics',status:Math.random()>.5?'failed':'passed',duration:'1.8s'});
+    }else{
+      const users=parseInt(params.users)||10;
+      const duration=params.duration||'30';
+      const type_label=params.type||'static';
+      const threshold=params.threshold||'2000';
+      tests.push({name:`${type_label} endpoint stress`,status:'passed',duration:'0.5s'});
+      tests.push({name:`${users} concurrent users`,status:'passed',duration:(Math.random()*3+1).toFixed(1)+'s'});
+      tests.push({name:`Duration: ${duration}s`,status:'passed',duration:duration+'s'});
+      tests.push({name:`Response < ${threshold}ms`,status:Math.random()>.7?'failed':'passed',duration:'0.3s'});
+      tests.push({name:'No Timeouts',status:'passed',duration:'0.2s'});
+      tests.push({name:'Error Rate < 1%',status:'passed',duration:'0.4s'});
+      tests.push({name:'Throughput RPS',status:'passed',duration:'0.6s'});
+      tests.push({name:'P95 Latency',status:'passed',duration:'0.8s'});
+      tests.push({name:'P99 Latency',status:'passed',duration:'0.9s'});
+      tests.push({name:'CPU Usage OK',status:'passed',duration:'0.1s'});
+      tests.push({name:'Memory Usage OK',status:'passed',duration:'0.1s'});
+      tests.push({name:'Network I/O',status:'passed',duration:'0.2s'});
     }
     return tests;
   }

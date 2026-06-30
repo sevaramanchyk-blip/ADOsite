@@ -1,5 +1,5 @@
 (function(){
-  let audioCtx,analyser,dataArray,timeData,source,micStream;
+  let audioCtx,analyser,dataArray,timeData,source,micStream,systemStream;
   let active=false;
   let mode='mic';
   let sensitivity=1.5;
@@ -36,16 +36,25 @@
   async function startMic(){
     reinit();
     if(audioCtx.state==='suspended')await audioCtx.resume();
-    try{
-      micStream=await navigator.mediaDevices.getUserMedia({audio:true});
-      source=audioCtx.createMediaStreamSource(micStream);
-      source.connect(analyser);
-      active=true;
-      analyser.getByteFrequencyData(dataArray);
-      setTimeout(()=>{if(active)update()},100);
-    }catch(e){
-      console.log('Mic access denied');
-    }
+    micStream=await navigator.mediaDevices.getUserMedia({audio:true});
+    source=audioCtx.createMediaStreamSource(micStream);
+    source.connect(analyser);
+    active=true;
+    update();
+  }
+
+  async function startSystem(){
+    reinit();
+    if(audioCtx.state==='suspended')await audioCtx.resume();
+    systemStream=await navigator.mediaDevices.getDisplayMedia({video:true,audio:{suppressLocalAudioPlayback:false}});
+    if(!systemStream.getAudioTracks().length)throw new Error('No audio track — enable "Share audio" in dialog');
+    systemStream.getAudioTracks().forEach(t=>{
+      t.onended=()=>{if(active){stop();btn.textContent='Sound Off';btn.classList.remove('active');}};
+    });
+    source=audioCtx.createMediaStreamSource(systemStream);
+    source.connect(analyser);
+    active=true;
+    update();
   }
 
   async function startDemo(){
@@ -115,6 +124,10 @@
     if(micStream){
       micStream.getTracks().forEach(t=>t.stop());
       micStream=null;
+    }
+    if(systemStream){
+      systemStream.getTracks().forEach(t=>t.stop());
+      systemStream=null;
     }
     demoNodes.forEach(n=>{
       try{n.stop&&n.stop()}catch(e){}
@@ -211,6 +224,20 @@
     return sum/(end-start);
   }
 
+  function showAudioMsg(text,dur){
+    let el=document.getElementById('audio-msg');
+    if(!el){
+      el=document.createElement('div');
+      el.id='audio-msg';
+      el.style.cssText='position:fixed;top:80px;left:50%;transform:translateX(-50%);background:rgba(10,10,20,.92);color:#00ccff;border:1px solid #2255ff;padding:12px 24px;border-radius:8px;font:14px/1.4 Orbitron,sans-serif;z-index:99999;pointer-events:none;transition:opacity .4s;letter-spacing:1px;text-align:center;max-width:420px';
+      document.body.appendChild(el);
+    }
+    el.textContent=text;
+    el.style.opacity='1';
+    clearTimeout(el._t);
+    el._t=setTimeout(()=>{el.style.opacity='0'},dur||4000);
+  }
+
   const btn=document.getElementById('audio-toggle');
   const slider=document.getElementById('audio-sensitivity');
   const sliderVal=document.getElementById('sensitivity-val');
@@ -223,33 +250,50 @@
   }
 
   if(btn){
-    btn.addEventListener('click',()=>{
+    btn.addEventListener('click',async()=>{
       if(active){
         stop();
         btn.textContent='Sound Off';
         btn.classList.remove('active');
       }else{
-        if(mode==='mic'){
-          startMic();
-        }else{
-          startDemo();
-        }
-        btn.textContent='Sound On';
+        btn.textContent='Starting...';
         btn.classList.add('active');
+        try{
+          if(mode==='mic'){
+            await startMic();
+          }else if(mode==='system'){
+            showAudioMsg('In the dialog: check "Share tab audio"!',5000);
+            await startSystem();
+          }else{
+            await startDemo();
+          }
+          btn.textContent='Sound On';
+          if(mode==='system')showAudioMsg('Speaker mode — playing tab audio',3000);
+        }catch(e){
+          console.log('Audio start failed:',e);
+          const msg=e.message.includes('No audio')
+            ? 'No audio! Re-open dialog and CHECK "Share audio" checkbox'
+            : 'Audio error: '+e.message;
+          showAudioMsg(msg,5000);
+          btn.textContent='Sound Off';
+          btn.classList.remove('active');
+        }
       }
     });
     btn.addEventListener('contextmenu',e=>{
       e.preventDefault();
-      mode=mode==='mic'?'demo':'mic';
-      btn.title=mode==='mic'?'Mic mode | Right-click: Demo':'Demo mode | Right-click: Mic';
+      const modes=['mic','system','demo'];
+      const idx=modes.indexOf(mode);
+      mode=modes[(idx+1)%modes.length];
+      const labels={mic:'🎤 Mic',system:'🔊 Speaker',demo:'🎵 Demo'};
+      btn.title=labels[mode]+' | Right-click: cycle';
+      showAudioMsg('Mode: '+labels[mode],2000);
       if(active){
         stop();
-        if(mode==='mic')startMic();else startDemo();
+        if(mode==='mic')startMic();
+        else if(mode==='system')startSystem();
+        else startDemo();
       }
     });
-
-    startDemo();
-    btn.textContent='Sound On';
-    btn.classList.add('active');
   }
 })();

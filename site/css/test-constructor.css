@@ -1,10 +1,10 @@
 .constructor-container{
   max-width:800px;width:100%;
   background:var(--bg-card);
-  border:1px solid rgba(34,85,255,calc(.12 + var(--audio-volume)*.2));
+  border:1px solid rgba(34,85,255,calc(.12 + var(--audio-volume) * .2));
   padding:2rem;
   cursor:none;
-  box-shadow:0 0 40px rgba(34,85,255,calc(.05 + var(--audio-bass)*.15)),inset 0 1px 0 rgba(34,85,255,.08);
+  box-shadow:0 0 40px rgba(34,85,255,calc(.05 + var(--audio-bass) * .15)),inset 0 1px 0 rgba(34,85,255,.08);
 }
 .constructor-tabs{
   display:flex;gap:0;margin-bottom:2rem;
@@ -126,7 +126,25 @@
   color:var(--accent-blue);
   background:rgba(34,85,255,.1);
 }
-.form-group input:focus,.form-group select:focus{
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{
+  border-color:var(--accent-blue);
+  box-shadow:0 0 10px rgba(34,85,255,.2);
+}
+.form-textarea{
+  width:100%;
+  padding:.7rem 1rem;
+  background:#0d0d0d;
+  border:1px solid #333;
+  color:var(--text-primary);
+  font-family:var(--font-body);
+  font-size:.9rem;
+  outline:none;
+  transition:border-color .3s;
+  cursor:none;
+  resize:vertical;
+  min-height:60px;
+}
+.form-textarea:focus{
   border-color:var(--accent-blue);
   box-shadow:0 0 10px rgba(34,85,255,.2);
 }

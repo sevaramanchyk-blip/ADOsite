@@ -12,7 +12,10 @@ import os
 import re
 import sys
 import signal
+import warnings
 from pathlib import Path
+
+warnings.filterwarnings("ignore", category=ResourceWarning)
 from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).parent / ".env")
@@ -175,6 +178,22 @@ MAIN_MENU = InlineKeyboardMarkup([
     ],
     [
         InlineKeyboardButton(
+            "🔄 Все тесты", callback_data="run_all"
+        ),
+        InlineKeyboardButton(
+            "📊 Статистика", callback_data="stats"
+        ),
+    ],
+    [
+        InlineKeyboardButton(
+            "📋 Отчёт", callback_data="last_report"
+        ),
+        InlineKeyboardButton(
+            "⚙️ Настройки", callback_data="settings"
+        ),
+    ],
+    [
+        InlineKeyboardButton(
             "🎤 Про Ado", callback_data="about_ado"
         ),
         InlineKeyboardButton(
@@ -194,8 +213,8 @@ MAIN_MENU = InlineKeyboardMarkup([
 
 async def execute_command(cmd: str, timeout: int = 300) -> str:
     """Выполняет shell-команду с таймаутом и возвращает stdout/stderr."""
+    proc = None
     try:
-        # Запускаем процесс с перехватом stdout и stderr
         proc = await asyncio.create_subprocess_shell(
             cmd,
             stdout=asyncio.subprocess.PIPE,
@@ -204,7 +223,6 @@ async def execute_command(cmd: str, timeout: int = 300) -> str:
         stdout, stderr = await asyncio.wait_for(
             proc.communicate(), timeout
         )
-        # Формируем вывод: STDOUT + STDERR
         output = (
             f"STDOUT:\n{stdout.decode().strip()}"
             if stdout else ''
@@ -218,6 +236,13 @@ async def execute_command(cmd: str, timeout: int = 300) -> str:
         return f"Таймаут {timeout} сек"
     except Exception as e:
         return f'Ошибка {str(e)}'
+    finally:
+        if proc and proc.returncode is None:
+            try:
+                proc.kill()
+                await proc.wait()
+            except Exception:
+                pass
 
 
 def clear_results():
@@ -777,6 +802,132 @@ async def callback_about_site(
     )
 
 
+async def callback_run_all(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    """Обработчик кнопки 'Все тесты' — запуск всех тестов по очереди."""
+    query = update.callback_query
+    chat_id = query.message.chat_id
+    await query.answer()
+    await cleanup_messages(
+        context, chat_id, context.user_data,
+        except_id=query.message.message_id
+    )
+    msg = await query.message.reply_text(
+        "🔄 Запуск всех тестов..."
+    )
+    await track_message(context, chat_id, msg, context.user_data)
+    clear_results()
+    result = await execute_command(
+        'pytest -s -v tests/api tests/ui '
+        '--alluredir=./results'
+    )
+    text = format_results_generic(
+        result, "Все тесты", "🔄"
+    )
+    msg = await query.message.reply_text(
+        text or "✅ Все тесты прошли успешно!",
+        parse_mode='HTML'
+    )
+    await track_message(context, chat_id, msg, context.user_data)
+
+
+async def callback_stats(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    """Обработчик кнопки 'Статистика' — показать статистику тестов."""
+    query = update.callback_query
+    chat_id = query.message.chat_id
+    await query.answer()
+    await cleanup_messages(
+        context, chat_id, context.user_data,
+        except_id=query.message.message_id
+    )
+    results_dir = Path("./results")
+    total_files = len(list(results_dir.glob("*"))) if results_dir.exists() else 0
+    tests_dir = Path("./tests")
+    api_tests = len(list(tests_dir.glob("api/test_*.py")))
+    ui_tests = len(list(tests_dir.glob("ui/test_*.py")))
+    bot_tests = len(list(tests_dir.glob("test_bot.py")))
+    total_test_files = api_tests + ui_tests + bot_tests
+    await query.edit_message_text(
+        f"📊 <b>Статистика тестов</b>\n{SEP}\n\n"
+        f"📁 Файлов результатов: {total_files}\n"
+        f"📄 Файлов тестов: {total_test_files}\n"
+        f"  🚀 API: {api_tests}\n"
+        f"  🌐 UI: {ui_tests}\n"
+        f"  🤖 Бот: {bot_tests}\n\n"
+        f"━━━━ <b>Команды</b> ━━━━\n"
+        f"/run_api_test — API тесты\n"
+        f"/run_ui_test — UI тесты\n"
+        f"/run_load_test — Нагрузочный тест",
+        parse_mode='HTML',
+        reply_markup=MAIN_MENU
+    )
+
+
+async def callback_last_report(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    """Обработчик кнопки 'Отчёт' — показать последний отчёт."""
+    query = update.callback_query
+    chat_id = query.message.chat_id
+    await query.answer()
+    await cleanup_messages(
+        context, chat_id, context.user_data,
+        except_id=query.message.message_id
+    )
+    report_file = Path("./test_report.txt")
+    if report_file.exists():
+        content = report_file.read_text(encoding="utf-8")
+        if len(content) > 3000:
+            content = content[-3000:]
+        await query.edit_message_text(
+            f"📋 <b>Последний отчёт</b>\n{SEP}\n\n"
+            f"<code>{content}</code>",
+            parse_mode='HTML',
+            reply_markup=MAIN_MENU
+        )
+    else:
+        await query.edit_message_text(
+            f"📋 <b>Последний отчёт</b>\n{SEP}\n\n"
+            f"Отчёт пока не создан.\n"
+            f"Запусти тесты и вернись снова!",
+            parse_mode='HTML',
+            reply_markup=MAIN_MENU
+        )
+
+
+async def callback_settings(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    """Обработчик кнопки 'Настройки' — показать настройки бота."""
+    query = update.callback_query
+    chat_id = query.message.chat_id
+    await query.answer()
+    await cleanup_messages(
+        context, chat_id, context.user_data,
+        except_id=query.message.message_id
+    )
+    await query.edit_message_text(
+        f"⚙️ <b>Настройки</b>\n{SEP}\n\n"
+        f"━━━━ <b>Проект</b> ━━━━\n"
+        f"🌐 Сайт: ado-shop.com\n"
+        f"🤖 Бот: ADO Shop Bot\n"
+        f"📂 Тесты: tests/api + tests/ui\n\n"
+        f"━━━━ <b>Окружение</b> ━━━━\n"
+        f"🐍 Python: 3.x\n"
+        f"🧪 Фреймворк: Pytest\n"
+        f"📊 Отчёт: Allure\n"
+        f"🌐 Браузер: Chrome (headless)\n\n"
+        f"━━━━ <b>Действия</b> ━━━━\n"
+        f"🔄 /start — Перезапуск меню\n"
+        f"❓ /help — Список команд",
+        parse_mode='HTML',
+        reply_markup=MAIN_MENU
+    )
+
+
 async def run_load_command(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
@@ -847,21 +998,24 @@ async def help_command(
     )
 
 
+async def post_shutdown(application: Application) -> None:
+    """Корректно закрывает HTTP-сессию бота при завершении."""
+    await application.bot.shutdown()
+
+
 def main() -> None:
     """Точка входа: настройка и запуск Telegram-бота."""
     acquire_lock()
-    # Регистрируем обработчики сигналов для корректного завершения
     signal.signal(signal.SIGINT, release_lock)
     signal.signal(signal.SIGTERM, release_lock)
 
-    # Создаём приложение бота с токеном из .env
     application = (
         Application.builder()
         .token(os.getenv("TOKEN"))
+        .post_shutdown(post_shutdown)
         .build()
     )
 
-    # Регистрация командных обработчиков
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(
@@ -874,7 +1028,6 @@ def main() -> None:
         CommandHandler("run_load_test", run_load_command)
     )
 
-    # Регистрация обработчиков онлайн-кнопок (callback-запросы)
     application.add_handler(
         CallbackQueryHandler(
             callback_run_api, pattern="^run_api$"
@@ -930,8 +1083,27 @@ def main() -> None:
             callback_run_business, pattern="^run_business$"
         )
     )
+    application.add_handler(
+        CallbackQueryHandler(
+            callback_run_all, pattern="^run_all$"
+        )
+    )
+    application.add_handler(
+        CallbackQueryHandler(
+            callback_stats, pattern="^stats$"
+        )
+    )
+    application.add_handler(
+        CallbackQueryHandler(
+            callback_last_report, pattern="^last_report$"
+        )
+    )
+    application.add_handler(
+        CallbackQueryHandler(
+            callback_settings, pattern="^settings$"
+        )
+    )
 
-    # Запуск бота в режиме long polling
     try:
         application.run_polling(
             allowed_updates=Update.ALL_TYPES
