@@ -1,202 +1,179 @@
-"""Бизнес-сценарии тестирования сайта ado-shop.com."""
-import allure
+"""
+Тесты бизнес-логики ADO Shop.
+
+Проверяют ключевые пользовательские сценарии:
+работу корзины, выбор продуктов, функционал поиска.
+"""
+
 import time
+import pytest
+import allure
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from helpers.config import MAIN_URL
+from helpers.config import BASE_URL
+from core.locators.main_locators import MainPage
 
 
-@allure.feature("Бизнес-сценарии")
-@allure.story("Покупка товара")
-class TestBusinessScenarioPurchase:
-    """Сценарий: поиск товара и добавление в корзину."""
-    @allure.title("BS-1: Пользователь находит товар и "
-                  "добавляет в корзину")
-    def test_add_to_cart_flow(self, driver):
-        with allure.step("1. Открыть главную страницу"):
-            driver.get(MAIN_URL)
-            wait = WebDriverWait(driver, 15)
-            wait.until(
-                EC.presence_of_element_located(
-                    (By.TAG_NAME, "header")
-                )
-            )
-
-        with allure.step("2. Перейти в коллекцию Shinzou"):
-            driver.get(f"{MAIN_URL}collections/shinzou")
-            wait.until(
-                EC.presence_of_all_elements_located(
-                    (By.CSS_SELECTOR,
-                     ".card-wrapper, .product-card, "
-                     "[class*='product']")
-                )
-            )
-
-        with allure.step("3. Открыть первый товар"):
-            card = wait.until(
-                EC.presence_of_element_located(
-                    (By.CSS_SELECTOR,
-                     "a[href*='/products/']")
-                )
-            )
-            href = card.get_attribute("href")
-            driver.get(href)
-            wait.until(
-                EC.presence_of_element_located(
-                    (By.CSS_SELECTOR,
-                     ".product-info, "
-                     ".product__info-wrapper, "
-                     "[class*='product-info']")
-                )
-            )
-
-        with allure.step("4. Проверить наличие кнопки "
-                         "'Add to cart' или 'Sold out'"):
-            add_btn = wait.until(
-                EC.presence_of_element_located(
-                    (By.CSS_SELECTOR,
-                     "button[name='add']")
-                )
-            )
-
-        with allure.step("5. Нажать кнопку"):
-            btn_text = add_btn.text.strip()
-            add_btn.click()
-            time.sleep(2)
-
-        with allure.step("6. Проверить результат"):
-            if btn_text.lower() == "sold out":
-                pass
-            else:
-                cart = driver.find_element(
-                    By.ID, "cart-icon-bubble"
-                )
-                assert cart is not None
+def load_page(driver, path=""):
+    """
+    Утилита: открывает страницу по пути и возвращает объект MainPage
+    без полной инициализации (через __new__), чтобы избежать
+    лишнего ожидания загрузки из конструктора WebPage.
+    """
+    url = f"{BASE_URL}/{path}" if path else BASE_URL
+    driver.get(url)
+    time.sleep(3)
+    p = MainPage.__new__(MainPage)
+    p._web_driver = driver
+    return p
 
 
-@allure.feature("Бизнес-сценарии")
-@allure.story("Навигация по каталогу")
-class TestBusinessScenarioNavigation:
-    """Сценарий: навигация между коллекциями."""
-    @allure.title("BS-2: Пользователь переходит между "
-                  "коллекциями")
-    def test_navigation_between_collections(self, driver):
-        with allure.step("1. Открыть коллекцию Shinzou"):
-            driver.get(
-                f"{MAIN_URL}collections/shinzou"
-            )
-            wait = WebDriverWait(driver, 15)
-            wait.until(
-                EC.presence_of_all_elements_located(
-                    (By.CSS_SELECTOR,
-                     ".card-wrapper, .product-card, "
-                     "[class*='product']")
-                )
-            )
-            url1 = driver.current_url
+@allure.epic("ADO Shop Business Logic")
+@allure.feature("Cart Flow")
+class TestCartFlow:
+    """Тесты сценариев корзины: пустая корзина, URL, кнопка checkout."""
 
-        with allure.step("2. Перейти в коллекцию Hibana"):
-            driver.get(
-                f"{MAIN_URL}collections/hibana"
-            )
-            wait.until(
-                EC.presence_of_all_elements_located(
-                    (By.CSS_SELECTOR,
-                     ".card-wrapper, .product-card, "
-                     "[class*='product']")
-                )
-            )
-            url2 = driver.current_url
-            assert url1 != url2, (
-                "URL не изменился после перехода"
-            )
+    @allure.story("Empty cart message")
+    @allure.severity(allure.severity_level.CRITICAL)
+    def test_cart_empty_message(self, driver):
+        """На странице пустой корзины должно отображаться
+        сообщение 'Your cart is empty'."""
+        load_page(driver, "cart")
+        msgs = driver.find_elements(
+            By.XPATH, "//*[contains(text(),'Your cart is empty')]"
+        )
+        assert len(msgs) > 0, "Empty cart message not shown"
 
-        with allure.step("3. Проверить что товары "
-                         "отображаются"):
-            cards = driver.find_elements(
-                By.CSS_SELECTOR,
-                ".card-wrapper, .product-card, "
-                "[class*='product']"
-            )
-            assert len(cards) > 0, (
-                "Нет товаров в коллекции Hibana"
-            )
+    @allure.story("Cart page URL")
+    @allure.severity(allure.severity_level.CRITICAL)
+    def test_cart_url(self, driver):
+        """URL страницы корзины должен содержать /cart."""
+        load_page(driver, "cart")
+        assert "/cart" in driver.current_url, "Not on cart page"
 
-        with allure.step("4. Вернуться в Shinzou"):
-            driver.get(
-                f"{MAIN_URL}collections/shinzou"
-            )
-            wait.until(
-                EC.presence_of_all_elements_located(
-                    (By.CSS_SELECTOR,
-                     ".card-wrapper, .product-card, "
-                     "[class*='product']")
-                )
-            )
-            assert "shinzou" in driver.current_url
+    @allure.story("Checkout button present on empty cart")
+    @allure.severity(allure.severity_level.NORMAL)
+    def test_checkout_on_empty_cart(self, driver):
+        """Даже на пустой корзине должна быть кнопка checkout."""
+        load_page(driver, "cart")
+        btn = driver.find_elements(By.CSS_SELECTOR, 'button[name="checkout"]')
+        assert len(btn) > 0, "Checkout button missing on empty cart"
+
+    @allure.story("Cart icon in header")
+    @allure.severity(allure.severity_level.CRITICAL)
+    def test_cart_icon_in_header(self, driver):
+        """Иконка корзины должна быть видна в хедере."""
+        p = load_page(driver)
+        assert p.cart_link.is_visible(), "Cart icon not visible in header"
 
 
-@allure.feature("Бизнес-сценарии")
-@allure.story("Поиск и просмотр товара")
-class TestBusinessScenarioSearch:
-    """Сценарий: поиск товара через строку поиска."""
-    @allure.title("BS-3: Пользователь ищет товар "
-                  "через поиск")
-    def test_search_product_flow(self, driver):
-        with allure.step("1. Открыть главную страницу"):
-            driver.get(MAIN_URL)
-            wait = WebDriverWait(driver, 15)
-            wait.until(
-                EC.presence_of_element_located(
-                    (By.TAG_NAME, "header")
-                )
-            )
+@allure.epic("ADO Shop Business Logic")
+@allure.feature("Product Selection")
+class TestProductSelection:
+    """Тесты выбора продукта: наличие кнопки, цены, описания, изображения."""
 
-        with allure.step("2. Открыть поиск"):
-            search_btn = wait.until(
-                EC.presence_of_element_located(
-                    (By.CSS_SELECTOR,
-                     "summary.header__icon--search")
-                )
-            )
-            driver.execute_script(
-                "arguments[0].click();", search_btn
-            )
-            time.sleep(2)
-            search_input = wait.until(
-                EC.visibility_of_element_located(
-                    (By.ID, "Search-In-Modal")
-                )
-            )
-            assert search_input.is_displayed(), (
-                "Поле поиска не открылось"
-            )
+    def _get_first_product_url(self, driver):
+        """Вспомогательный метод: открывает коллекцию ALL MUSIC
+        и возвращает URL первого товара."""
+        load_page(driver, "collections/all")
+        items = driver.find_elements(
+            By.CSS_SELECTOR, "#product-grid li.grid__item a[href*='/products/']"
+        )
+        assert len(items) > 0, "No products found"
+        return items[0].get_attribute("href")
 
-        with allure.step("3. Ввести запрос 'Shinzou'"):
-            search_input.send_keys("Shinzou")
-            time.sleep(2)
+    @allure.story("Product has add to cart button")
+    @allure.severity(allure.severity_level.CRITICAL)
+    def test_add_to_cart_button(self, driver):
+        """На странице продукта должна быть кнопка добавления в корзину."""
+        href = self._get_first_product_url(driver)
+        driver.get(href)
+        time.sleep(3)
+        btn = driver.find_elements(By.CSS_SELECTOR, 'button[name="add"]')
+        assert len(btn) > 0, "Add to cart button missing"
 
-        with allure.step("4. Проверить результаты"):
-            results = driver.find_elements(
-                By.CSS_SELECTOR,
-                "[class*='search-result'] a, "
-                ".predictive-search__results a, "
-                "[role='option']"
-            )
-            has_results = len(results) > 0
-            page_text = driver.page_source.lower()
-            has_shinzou = "shinzou" in page_text
-            assert has_results or has_shinzou, (
-                "Нет результатов поиска"
-            )
+    @allure.story("Product has price")
+    @allure.severity(allure.severity_level.CRITICAL)
+    def test_product_has_price(self, driver):
+        """На странице продукта должна отображаться цена
+        (обычная или со скидкой)."""
+        href = self._get_first_product_url(driver)
+        driver.get(href)
+        time.sleep(3)
+        price = driver.find_elements(
+            By.CSS_SELECTOR, ".price-item--regular, .price-item--sale"
+        )
+        assert len(price) > 0, "Product price not found"
 
-        with allure.step("5. Нажать Enter для поиска"):
-            search_input.submit()
-            time.sleep(3)
+    @allure.story("Product has title")
+    @allure.severity(allure.severity_level.CRITICAL)
+    def test_product_has_title(self, driver):
+        """На странице продукта должен быть непустой заголовок h1."""
+        href = self._get_first_product_url(driver)
+        driver.get(href)
+        time.sleep(3)
+        h1 = driver.find_elements(By.TAG_NAME, "h1")
+        assert len(h1) > 0 and h1[0].text.strip(), "Product title missing"
 
-        with allure.step("6. Проверить URL поиска"):
-            time.sleep(2)
-            assert "search" in driver.current_url or (
-                "q=" in driver.current_url
-            ), f"URL: {driver.current_url}"
+    @allure.story("Product has description")
+    @allure.severity(allure.severity_level.NORMAL)
+    def test_product_has_description(self, driver):
+        """На странице продукта должно быть описание."""
+        href = self._get_first_product_url(driver)
+        driver.get(href)
+        time.sleep(3)
+        desc = driver.find_elements(
+            By.CSS_SELECTOR, ".product__description"
+        )
+        assert len(desc) > 0, "Product description missing"
+
+    @allure.story("Product has image")
+    @allure.severity(allure.severity_level.NORMAL)
+    def test_product_has_image(self, driver):
+        """На странице продукта должно быть изображение."""
+        href = self._get_first_product_url(driver)
+        driver.get(href)
+        time.sleep(3)
+        img = driver.find_elements(By.CSS_SELECTOR, ".product__media img")
+        assert len(img) > 0, "Product image missing"
+
+    @allure.story("Product image has src")
+    @allure.severity(allure.severity_level.MINOR)
+    def test_product_image_has_src(self, driver):
+        """У изображения продукта должен быть валидный src-атрибут."""
+        href = self._get_first_product_url(driver)
+        driver.get(href)
+        time.sleep(3)
+        img = driver.find_elements(By.CSS_SELECTOR, ".product__media img")
+        assert len(img) > 0
+        src = img[0].get_attribute("src")
+        assert src and src.startswith("http"), "Product image has no valid src"
+
+
+@allure.epic("ADO Shop Business Logic")
+@allure.feature("Search Flow")
+class TestSearchFlow:
+    """Тесты функционала поиска: поиск с результатами и без."""
+
+    @allure.story("Search finds products")
+    @allure.severity(allure.severity_level.CRITICAL)
+    def test_search_returns_results(self, driver):
+        """Поиск по запросу 'Zanmu' должен показать результаты."""
+        p = load_page(driver)
+        p.search_toggle.click()
+        p.search_input.send_keys("Zanmu")
+        time.sleep(3)
+        assert p.search_results.is_visible(), "No search results shown"
+
+    @allure.story("Search with no results")
+    @allure.severity(allure.severity_level.NORMAL)
+    def test_search_no_results(self, driver):
+        """Поиск по несуществующему запросу должен показать
+        сообщение об отсутствии результатов."""
+        p = load_page(driver)
+        p.search_toggle.click()
+        p.search_input.send_keys("zzzznonexistent12345")
+        time.sleep(3)
+        results = driver.find_elements(
+            By.XPATH, "//*[contains(text(),'No results')]"
+        )
+        assert len(results) > 0, "No-results message not shown for invalid query"

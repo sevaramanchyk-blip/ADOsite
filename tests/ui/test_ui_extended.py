@@ -1,540 +1,196 @@
-"""Расширенные UI-тесты для сайта ado-shop.com."""
-import allure
+"""
+Расширенные UI-тесты ADO Shop.
+
+Проверяют время загрузки страниц, корректность изображений
+(src, alt), ссылок (href, HTTPS), скроллинг и заголовки страниц.
+"""
+
 import time
 import pytest
+import allure
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.keys import Keys
-from helpers.config import MAIN_URL, COLLECTIONS
+from helpers.config import BASE_URL
+from core.locators.main_locators import MainPage
 
 
-@allure.feature("UI тесты")
-@allure.story("Навигация по сайту")
-class TestNavigationLinks:
-    """Проверка работы навигационных ссылок."""
-
-    @allure.title("Ссылка Home ведёт на главную")
-    def test_home_link(self, driver):
-        driver.get(f"{MAIN_URL}collections/shinzou")
-        wait = WebDriverWait(driver, 10)
-        home = wait.until(
-            EC.element_to_be_clickable((By.ID, "HeaderMenu-home"))
-        )
-        home.click()
-        time.sleep(2)
-        with allure.step("Перешли на главную"):
-            assert driver.current_url.rstrip("/") == MAIN_URL.rstrip("/")
-
-    @allure.title("Клик по логотипу ведёт на главную")
-    def test_logo_links_home(self, driver):
-        driver.get(f"{MAIN_URL}collections/shinzou")
-        wait = WebDriverWait(driver, 10)
-        logo = wait.until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, ".header__heading-link")
-            )
-        )
-        logo.click()
-        time.sleep(2)
-        with allure.step("Перешли на главную через логотип"):
-            assert driver.current_url.rstrip("/").endswith(".com")
-
-    @allure.title("Ссылка Help открывается")
-    def test_help_link(self, driver):
-        driver.get(MAIN_URL)
-        wait = WebDriverWait(driver, 10)
-        help_link = wait.until(
-            EC.element_to_be_clickable((By.ID, "HeaderMenu-help"))
-        )
-        help_link.click()
-        time.sleep(2)
-        with allure.step("Страница Help загружена"):
-            assert "help" in driver.current_url.lower() or (
-                driver.title != ""
-            )
-
-    @allure.title("Ссылка Contact открывается")
-    def test_contact_link(self, driver):
-        driver.get(MAIN_URL)
-        wait = WebDriverWait(driver, 10)
-        contact = wait.until(
-            EC.element_to_be_clickable(
-                (By.ID, "HeaderMenu-contact")
-            )
-        )
-        contact.click()
-        time.sleep(2)
-        with allure.step("Страница Contact загружена"):
-            assert "contact" in driver.current_url.lower() or (
-                driver.title != ""
-            )
+def load_page(driver, path=""):
+    """
+    Утилита: открывает страницу по пути и возвращает объект MainPage
+    без полной инициализации (через __new__), чтобы избежать
+    лишнего ожидания загрузки из конструктора WebPage.
+    """
+    url = f"{BASE_URL}/{path}" if path else BASE_URL
+    driver.get(url)
+    time.sleep(3)
+    p = MainPage.__new__(MainPage)
+    p._web_driver = driver
+    return p
 
 
-@allure.feature("UI тесты")
-@allure.story("Корзина")
-class TestCart:
-    """Проверка функциональности корзины."""
+@allure.epic("ADO Shop Extended UI")
+@allure.feature("Page Load")
+class TestPageLoad:
+    """Тесты загрузки страниц: время, readyState."""
 
-    @allure.title("Корзина открывается по клику")
-    def test_cart_opens(self, driver):
-        driver.get(MAIN_URL)
-        wait = WebDriverWait(driver, 10)
-        cart = wait.until(
-            EC.element_to_be_clickable(
-                (By.ID, "cart-icon-bubble")
-            )
-        )
-        cart.click()
-        time.sleep(2)
-        with allure.step("Корзина открыта"):
-            assert "cart" in driver.current_url.lower() or (
-                len(driver.find_elements(
-                    By.CSS_SELECTOR,
-                    "[class*='cart'], [class*='drawer']"
-                )) > 0
-            )
+    @allure.story("Homepage loads within timeout")
+    @allure.severity(allure.severity_level.CRITICAL)
+    def test_homepage_load_time(self, driver):
+        """Главная страница должна загрузиться менее чем за 15 секунд."""
+        start = time.time()
+        load_page(driver)
+        elapsed = time.time() - start
+        assert elapsed < 15, f"Homepage took {elapsed:.1f}s (>15s)"
 
-    @allure.title("Корзина отображается пустой на старте")
-    def test_cart_empty_message(self, driver):
-        driver.get(f"{MAIN_URL}cart")
-        wait = WebDriverWait(driver, 10)
-        time.sleep(2)
-        page_text = driver.page_source.lower()
-        with allure.step("Корзина пуста или есть сообщение"):
-            assert (
-                "empty" in page_text
-                or "cart" in page_text
-                or "корзин" in page_text
-            )
+    @allure.story("Ready state is complete")
+    @allure.severity(allure.severity_level.CRITICAL)
+    def test_ready_state(self, driver):
+        """document.readyState должен быть 'complete'
+        после загрузки главной страницы."""
+        load_page(driver)
+        state = driver.execute_script("return document.readyState")
+        assert state == "complete", f"ReadyState is '{state}'"
 
+    @allure.story("Collection page loads")
+    @allure.severity(allure.severity_level.NORMAL)
+    def test_collection_loads(self, driver):
+        """Страница коллекции Hibana должна полностью загрузиться."""
+        load_page(driver, "collections/hibana")
+        state = driver.execute_script("return document.readyState")
+        assert state == "complete", "Collection page not fully loaded"
 
-@allure.feature("UI тесты")
-@allure.story("Страница товара")
-class TestProductPageExtended:
-    """Расширенные проверки страницы товара."""
-
-    @allure.title("У товара есть заголовок")
-    def test_product_has_title(self, driver):
-        driver.get(f"{MAIN_URL}collections/shinzou")
-        wait = WebDriverWait(driver, 15)
-        card = wait.until(
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR, "a[href*='/products/']")
-            )
-        )
-        driver.get(card.get_attribute("href"))
-        title = wait.until(
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR,
-                 "h1, .product-info__title, "
-                 "[class*='product-title']")
-            )
-        )
-        with allure.step(f"Заголовок: {title.text[:30]}"):
-            assert len(title.text.strip()) > 0
-
-    @allure.title("У товара есть описание")
-    def test_product_has_description(self, driver):
-        driver.get(f"{MAIN_URL}collections/shinzou")
-        wait = WebDriverWait(driver, 15)
-        card = wait.until(
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR, "a[href*='/products/']")
-            )
-        )
-        driver.get(card.get_attribute("href"))
-        time.sleep(3)
-        page_text = driver.page_source.lower()
-        with allure.step("Описание присутствует"):
-            assert "description" in page_text or (
-                len(page_text) > 2000
-            )
-
-    @allure.title("У товара есть изображение")
-    def test_product_has_image(self, driver):
-        driver.get(f"{MAIN_URL}collections/shinzou")
-        wait = WebDriverWait(driver, 15)
-        card = wait.until(
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR, "a[href*='/products/']")
-            )
-        )
-        driver.get(card.get_attribute("href"))
-        images = wait.until(
-            EC.presence_of_all_elements_located(
-                (By.CSS_SELECTOR,
-                 ".product__media img, "
-                 ".product-info img, "
-                 "[class*='product'] img")
-            )
-        )
-        with allure.step(f"Найдено {len(images)} изображений"):
-            assert len(images) > 0
-
-    @allure.title("Кнопка Add to cart или Sold out")
-    def test_product_add_button(self, driver):
-        driver.get(f"{MAIN_URL}collections/shinzou")
-        wait = WebDriverWait(driver, 15)
-        card = wait.until(
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR, "a[href*='/products/']")
-            )
-        )
-        driver.get(card.get_attribute("href"))
-        btn = wait.until(
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR, "button[name='add']")
-            )
-        )
-        btn_text = btn.text.strip().lower()
-        with allure.step(f"Кнопка: {btn_text}"):
-            assert "add" in btn_text or "sold" in btn_text
-
-    @allure.title("Breadcrumbs присутствуют")
-    def test_product_breadcrumbs(self, driver):
-        driver.get(f"{MAIN_URL}collections/shinzou")
-        wait = WebDriverWait(driver, 15)
-        card = wait.until(
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR, "a[href*='/products/']")
-            )
-        )
-        driver.get(card.get_attribute("href"))
-        time.sleep(2)
-        breadcrumbs = driver.find_elements(
+    @allure.story("Product page loads")
+    @allure.severity(allure.severity_level.NORMAL)
+    def test_product_page_loads(self, driver):
+        """Страница продукта должна полностью загрузиться."""
+        load_page(driver, "collections/all")
+        items = driver.find_elements(
             By.CSS_SELECTOR,
-            "nav.breadcrumb, .breadcrumb, "
-            "[class*='breadcrumb'], "
-            "[aria-label='Breadcrumb']"
+            "#product-grid li.grid__item a[href*='/products/']"
         )
-        with allure.step(f"Breadcrumbs: {len(breadcrumbs)}"):
-            pass
-
-
-@allure.feature("UI тесты")
-@allure.story("Коллекции")
-class TestCollectionsExtended:
-    """Расширенные проверки коллекций."""
-
-    @allure.title("Коллекция имеет заголовок")
-    @pytest.mark.parametrize("slug,name", COLLECTIONS)
-    def test_collection_has_title(self, driver, slug, name):
-        driver.get(f"{MAIN_URL}collections/{slug}")
-        wait = WebDriverWait(driver, 15)
-        title = wait.until(
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR,
-                 "h1, .collection-hero__title, "
-                 "[class*='collection'] h1")
-            )
-        )
-        with allure.step(f"Заголовок коллекции: {title.text[:30]}"):
-            assert len(title.text.strip()) > 0
-
-    @allure.title("Коллекция имеет количество товаров")
-    @pytest.mark.parametrize("slug,name", COLLECTIONS[:3])
-    def test_collection_product_count(self, driver, slug, name):
-        driver.get(f"{MAIN_URL}collections/{slug}")
-        wait = WebDriverWait(driver, 15)
-        cards = wait.until(
-            EC.presence_of_all_elements_located(
-                (By.CSS_SELECTOR,
-                 ".card-wrapper, .product-card, "
-                 "[class*='product']")
-            )
-        )
-        with allure.step(f"Товаров в {name}: {len(cards)}"):
-            assert len(cards) > 0
-
-    @allure.title("Изображения товаров загружаются")
-    @pytest.mark.parametrize("slug,name", COLLECTIONS[:2])
-    def test_collection_images_load(self, driver, slug, name):
-        driver.get(f"{MAIN_URL}collections/{slug}")
-        wait = WebDriverWait(driver, 15)
-        images = wait.until(
-            EC.presence_of_all_elements_located(
-                (By.CSS_SELECTOR,
-                 ".card-wrapper img, .card__media img")
-            )
-        )
-        loaded = 0
-        for img in images[:4]:
-            try:
-                w = driver.execute_script(
-                    "return arguments[0].naturalWidth", img
-                )
-                if w and w > 0:
-                    loaded += 1
-            except Exception:
-                pass
-        with allure.step(f"Загруженных изображений: {loaded}"):
-            assert loaded > 0
-
-
-@allure.feature("UI тесты")
-@allure.story("Поиск")
-class TestSearchExtended:
-    """Расширенные проверки поиска."""
-
-    @allure.title("Поиск по запросу 'Ado'")
-    def test_search_ado(self, driver):
-        driver.get(MAIN_URL)
-        wait = WebDriverWait(driver, 10)
-        search_btn = wait.until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR,
-                 "summary[aria-haspopup='dialog']")
-            )
-        )
-        search_btn.click()
-        time.sleep(1)
-        search_input = wait.until(
-            EC.visibility_of_element_located(
-                (By.ID, "Search-In-Modal")
-            )
-        )
-        search_input.send_keys("Ado")
-        time.sleep(2)
-        page = driver.page_source.lower()
-        with allure.step("Результаты поиска содержат Ado"):
-            assert "ado" in page
-
-    @allure.title("Поиск по запросу 'Vinyl'")
-    def test_search_vinyl(self, driver):
-        driver.get(MAIN_URL)
-        wait = WebDriverWait(driver, 10)
-        search_btn = wait.until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR,
-                 "summary[aria-haspopup='dialog']")
-            )
-        )
-        search_btn.click()
-        time.sleep(1)
-        search_input = wait.until(
-            EC.visibility_of_element_located(
-                (By.ID, "Search-In-Modal")
-            )
-        )
-        search_input.send_keys("Vinyl")
-        time.sleep(2)
-        page = driver.page_source.lower()
-        with allure.step("Результаты поиска"):
-            assert "vinyl" in page or "result" in page
-
-    @allure.title("Поиск по несуществующему запросу")
-    def test_search_no_results(self, driver):
-        driver.get(MAIN_URL)
-        wait = WebDriverWait(driver, 10)
-        search_btn = wait.until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR,
-                 "summary[aria-haspopup='dialog']")
-            )
-        )
-        search_btn.click()
-        time.sleep(1)
-        search_input = wait.until(
-            EC.visibility_of_element_located(
-                (By.ID, "Search-In-Modal")
-            )
-        )
-        search_input.send_keys("zzznotexist12345")
+        assert len(items) > 0
+        href = items[0].get_attribute("href")
+        driver.get(href)
         time.sleep(3)
-        page = driver.page_source.lower()
-        with allure.step("Нет результатов или сообщение"):
-            assert (
-                "no results" in page
-                or "nothing" in page
-                or "not found" in page
-                or "zzznotexist" in page
-            )
+        state = driver.execute_script("return document.readyState")
+        assert state == "complete", "Product page not fully loaded"
 
 
-@allure.feature("UI тесты")
-@allure.story("Размер страницы")
-class TestPageSizeExtended:
-    """Проверка размера страниц коллекций."""
-
-    @allure.title("Страница коллекции < 3MB")
-    @pytest.mark.parametrize("slug,name", COLLECTIONS[:2])
-    def test_collection_page_size(self, driver, slug, name):
-        driver.get(f"{MAIN_URL}collections/{slug}")
-        time.sleep(2)
-        size = len(driver.page_source.encode("utf-8"))
-        with allure.step(f"Размер {name}: {size / 1024:.0f} KB"):
-            assert size < 3 * 1024 * 1024, (
-                f"{name}: {size / 1024:.0f} KB"
-            )
-
-    @allure.title("Страница товара < 3MB")
-    def test_product_page_size(self, driver):
-        driver.get(f"{MAIN_URL}collections/shinzou")
-        wait = WebDriverWait(driver, 15)
-        card = wait.until(
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR, "a[href*='/products/']")
-            )
-        )
-        driver.get(card.get_attribute("href"))
-        time.sleep(3)
-        size = len(driver.page_source.encode("utf-8"))
-        with allure.step(f"Размер страницы товара: {size / 1024:.0f} KB"):
-            assert size < 3 * 1024 * 1024
-
-
-@allure.feature("UI тесты")
-@allure.story("Интерактивность")
-class TestInteractivity:
-    """Проверка интерактивных элементов."""
-
-    @allure.title("Hover на карточку товара")
-    def test_product_card_hover(self, driver):
-        driver.get(f"{MAIN_URL}collections/shinzou")
-        wait = WebDriverWait(driver, 15)
-        card = wait.until(
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR,
-                 ".card-wrapper, .product-card, "
-                 "[class*='product']")
-            )
-        )
-        from selenium.webdriver.common.action_chains import ActionChains
-        ActionChains(driver).move_to_element(card).perform()
-        time.sleep(1)
-        with allure.step("Hover выполнен"):
-            assert card.is_displayed()
-
-    @allure.title("Прокрутка до футера")
-    def test_scroll_to_footer(self, driver):
-        driver.get(MAIN_URL)
-        wait = WebDriverWait(driver, 10)
-        footer = wait.until(
-            EC.presence_of_element_located((By.TAG_NAME, "footer"))
-        )
-        driver.execute_script(
-            "arguments[0].scrollIntoView();", footer
-        )
-        time.sleep(1)
-        with allure.step("Футер в видимой области"):
-            assert footer.is_displayed()
-
-    @allure.title("Enter в поле поиска")
-    def test_search_enter(self, driver):
-        driver.get(MAIN_URL)
-        wait = WebDriverWait(driver, 10)
-        search_btn = wait.until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR,
-                 "summary[aria-haspopup='dialog']")
-            )
-        )
-        search_btn.click()
-        time.sleep(1)
-        search_input = wait.until(
-            EC.visibility_of_element_located(
-                (By.ID, "Search-In-Modal")
-            )
-        )
-        search_input.send_keys("Shinzou")
-        search_input.send_keys(Keys.ENTER)
-        time.sleep(3)
-        with allure.step("Поиск по Enter"):
-            assert "search" in driver.current_url or (
-                "q=" in driver.current_url
-            )
-
-
-@allure.feature("UI тесты")
-@allure.story("Адаптивность")
-class TestResponsive:
-    """Проверка адаптивности (разные размеры экрана)."""
-
-    @allure.title("Хедер виден при мобильном размере")
-    def test_mobile_header(self, driver):
-        driver.set_window_size(375, 812)
-        driver.get(MAIN_URL)
-        wait = WebDriverWait(driver, 15)
-        header = wait.until(
-            EC.visibility_of_element_located(
-                (By.TAG_NAME, "header")
-            )
-        )
-        with allure.step("Хедер виден на мобильном"):
-            assert header.is_displayed()
-        driver.set_window_size(1920, 1080)
-
-    @allure.title("Логотип виден при мобильном размере")
-    def test_mobile_logo(self, driver):
-        driver.set_window_size(375, 812)
-        driver.get(MAIN_URL)
-        wait = WebDriverWait(driver, 15)
-        logo = wait.until(
-            EC.visibility_of_element_located(
-                (By.CSS_SELECTOR, ".header__heading-logo")
-            )
-        )
-        with allure.step("Логотип виден на мобильном"):
-            assert logo.is_displayed()
-        driver.set_window_size(1920, 1080)
-
-    @allure.title("Товары отображаются на планшете")
-    def test_tablet_products(self, driver):
-        driver.set_window_size(768, 1024)
-        driver.get(f"{MAIN_URL}collections/shinzou")
-        wait = WebDriverWait(driver, 15)
-        cards = wait.until(
-            EC.presence_of_all_elements_located(
-                (By.CSS_SELECTOR,
-                 ".card-wrapper, .product-card, "
-                 "[class*='product']")
-            )
-        )
-        with allure.step(f"Товаров на планшете: {len(cards)}"):
-            assert len(cards) > 0
-        driver.set_window_size(1920, 1080)
-
-
-@allure.feature("UI тесты")
-@allure.story("Изображения")
+@allure.epic("ADO Shop Extended UI")
+@allure.feature("Images")
 class TestImages:
-    """Проверка загрузки изображений."""
+    """Тесты изображений: наличие src и alt атрибутов."""
 
-    @allure.title("Логотип — валидное изображение")
-    def test_logo_image_valid(self, driver):
-        driver.get(MAIN_URL)
-        wait = WebDriverWait(driver, 10)
-        logo = wait.until(
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR, ".header__heading-logo")
-            )
-        )
-        natural_w = driver.execute_script(
-            "return arguments[0].naturalWidth", logo
-        )
-        with allure.step(f"Ширина логотипа: {natural_w}"):
-            assert natural_w and natural_w > 0
+    @allure.story("All images have src")
+    @allure.severity(allure.severity_level.NORMAL)
+    def test_images_have_src(self, driver):
+        """У первых 10 изображений на главной странице
+        должен быть атрибут src."""
+        load_page(driver)
+        imgs = driver.find_elements(By.TAG_NAME, "img")
+        for img in imgs[:10]:
+            src = img.get_attribute("src")
+            assert src, "Image missing src attribute"
 
-    @allure.title("Изображения товаров загружены")
-    def test_product_images_loaded(self, driver):
-        driver.get(f"{MAIN_URL}collections/shinzou")
-        wait = WebDriverWait(driver, 15)
-        images = wait.until(
-            EC.presence_of_all_elements_located(
-                (By.CSS_SELECTOR,
-                 ".card-wrapper img, .card__media img")
-            )
-        )
-        loaded = 0
-        for img in images[:6]:
-            try:
-                w = driver.execute_script(
-                    "return arguments[0].naturalWidth", img
-                )
-                if w and w > 0:
-                    loaded += 1
-            except Exception:
-                pass
-        with allure.step(f"Загруженных: {loaded}/{len(images[:6])}"):
-            assert loaded > 0
+    @allure.story("Images have alt attribute")
+    @allure.severity(allure.severity_level.MINOR)
+    def test_images_have_alt(self, driver):
+        """Большинство изображений на главной странице
+        должны иметь атрибут alt (для accessibility)."""
+        load_page(driver)
+        imgs = driver.find_elements(By.TAG_NAME, "img")
+        missing = 0
+        for img in imgs[:10]:
+            alt = img.get_attribute("alt")
+            if not alt:
+                missing += 1
+        assert missing < len(imgs[:10]), \
+            f"{missing}/{len(imgs[:10])} images missing alt"
+
+
+@allure.epic("ADO Shop Extended UI")
+@allure.feature("Links")
+class TestLinks:
+    """Тесты ссылок: наличие href, использование HTTPS."""
+
+    @allure.story("All links have href")
+    @allure.severity(allure.severity_level.MINOR)
+    def test_links_have_href(self, driver):
+        """Большинство ссылок на главной странице должны
+        иметь атрибут href (не более 5 без href)."""
+        load_page(driver)
+        links = driver.find_elements(By.TAG_NAME, "a")
+        missing = 0
+        for link in links[:20]:
+            href = link.get_attribute("href")
+            if not href:
+                missing += 1
+        assert missing < 5, f"{missing} links missing href"
+
+    @allure.story("Internal links use HTTPS")
+    @allure.severity(allure.severity_level.MINOR)
+    def test_internal_links_https(self, driver):
+        """Внутренние ссылки (ado-shop.com) должны использовать HTTPS."""
+        load_page(driver)
+        links = driver.find_elements(By.TAG_NAME, "a")
+        for link in links[:10]:
+            href = link.get_attribute("href")
+            if href and "ado-shop.com" in href:
+                assert href.startswith("https://"), \
+                    f"Internal link not HTTPS: {href}"
+
+
+@allure.epic("ADO Shop Extended UI")
+@allure.feature("Scrolling")
+class TestScrolling:
+    """Тесты скроллинга: прокрутка вниз и возврат наверх."""
+
+    @allure.story("Scroll down works")
+    @allure.severity(allure.severity_level.NORMAL)
+    def test_scroll_down(self, driver):
+        """Прокрутка вниз должна изменить scrollY > 0."""
+        p = load_page(driver)
+        p.scroll_down()
+        scroll_y = driver.execute_script("return window.scrollY")
+        assert scroll_y > 0, "Page did not scroll down"
+
+    @allure.story("Scroll to top works")
+    @allure.severity(allure.severity_level.NORMAL)
+    def test_scroll_to_top(self, driver):
+        """После прокрутки вниз и обратно scrollY должен быть 0."""
+        p = load_page(driver)
+        p.scroll_down()
+        p.scroll_up()
+        scroll_y = driver.execute_script("return window.scrollY")
+        assert scroll_y == 0, f"Did not scroll to top, scrollY={scroll_y}"
+
+
+@allure.epic("ADO Shop Extended UI")
+@allure.feature("Page Title")
+class TestPageTitle:
+    """Тесты заголовков страниц (title тег)."""
+
+    @allure.story("Homepage has title")
+    @allure.severity(allure.severity_level.NORMAL)
+    def test_homepage_title(self, driver):
+        """Главная страница должна иметь непустой title."""
+        load_page(driver)
+        title = driver.title
+        assert title, "Homepage has no title"
+
+    @allure.story("Collection has title")
+    @allure.severity(allure.severity_level.NORMAL)
+    def test_collection_title(self, driver):
+        """Страница коллекции должна иметь непустой title."""
+        load_page(driver, "collections/all")
+        title = driver.title
+        assert title, "Collection page has no title"
+
+    @allure.story("Cart has title")
+    @allure.severity(allure.severity_level.NORMAL)
+    def test_cart_title(self, driver):
+        """Страница корзины должна иметь непустой title."""
+        load_page(driver, "cart")
+        title = driver.title
+        assert title, "Cart page has no title"

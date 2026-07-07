@@ -1,7 +1,7 @@
 import os
 from core.pages.elements import WebElement, ManyWebElements
 from core.pages.base_page import WebPage
-from helpers.config import MAIN_URL
+from helpers.config import MAIN_URL, BASE_URL
 
 
 class MainPage(WebPage):
@@ -11,41 +11,142 @@ class MainPage(WebPage):
 
             super().__init__(web_driver, url)
 
-    head_btn_main = WebElement(
-        xpath='//*[@aria-controls="HeaderCountry-country-results"]'
-              '//span'
+    # ======================== HEADER ========================
+
+    header_element = WebElement(
+        xpath='//header'
     )
-    head_btn_home = WebElement(
-        xpath='(//*[@aria-current="page"])[2]//span'
+    header_logo = WebElement(
+        xpath='//header//a[@class*="header__heading-link"]'
     )
-    head_btn_music = WebElement(
-        xpath='(//*[@aria-expanded="false"])[6]//span'
+    nav_links = ManyWebElements(
+        xpath='//header//a[contains(@class, "header__menu-item")]'
     )
-    head_btn_merch = WebElement(
-        xpath='(//*[@aria-expanded="false"])[7]//span'
+    cart_link = WebElement(
+        xpath='//a[contains(@class, "header__icon--cart")]'
     )
-    head_btn_help = WebElement(
-        xpath='//*[@id="HeaderMenu-help"]//span'
+
+    # ======================== SEARCH ========================
+
+    search_toggle = WebElement(
+        xpath='//details-modal[@class="header__search"]'
+              '//summary[contains(@class, "header__icon--search")]'
     )
-    head_btn_contact = WebElement(
-        xpath='//*[@id="HeaderMenu-contact"]//span'
+    search_input = WebElement(
+        xpath='//predictive-search//input[@type="search"]'
     )
-    head_btn_language = WebElement(
-        xpath='//*[@aria-controls="HeaderLanguageList"]'
-              '//span'
+    search_results = WebElement(
+        xpath='//predictive-search//*[@id="predictive-search-results"]'
     )
-    head_btn_country = WebElement(
-        xpath='//*[@aria-controls="HeaderCountry-country-results"]'
-              '//span'
+
+    # ======================== COLLECTION PAGE ========================
+
+    collection_product_grid = WebElement(
+        xpath='//*[@id="product-grid"]'
     )
-    head_btn_search = WebElement(
-        xpath='(//*[@aria-haspopup="dialog"]'
-              '//*[@aria-hidden="true"])[1]'
+    collection_product_items = ManyWebElements(
+        xpath='//*[@id="product-grid"]//li[contains(@class, "grid__item")]'
     )
-    head_btn_profile = WebElement(
-        ID='cart-icon-bubble'
+    product_title_links = ManyWebElements(
+        xpath='//a[contains(@class, "full-unstyled-link")]'
     )
-    head_btn_cart = WebElement(
-        xpath='//*[@id="cart-icon-bubble"]'
-              '//*[@aria-hidden="true"]'
+
+    # ======================== PRODUCT PAGE ========================
+
+    product_title = WebElement(
+        xpath='//h1'
     )
+    product_price = WebElement(
+        xpath='//span[contains(@class, "price-item--regular")]'
+    )
+    product_add_to_cart = WebElement(
+        xpath='//button[@name="add"]'
+    )
+    product_description = WebElement(
+        xpath='//div[contains(@class, "product__description")]'
+    )
+    product_image = WebElement(
+        xpath='//div[contains(@class, "product__media")]//img'
+    )
+
+    # ======================== CART PAGE ========================
+
+    cart_page_heading = WebElement(
+        xpath='//h1'
+    )
+    cart_empty_message = WebElement(
+        xpath='//*[contains(text(), "Your cart is empty")]'
+    )
+    checkout_button = WebElement(
+        xpath='//button[@name="checkout"]'
+    )
+
+    # ======================== FOOTER ========================
+
+    footer_element = WebElement(
+        xpath='//footer'
+    )
+    footer_instagram = WebElement(
+        xpath='//footer//a[contains(@href, "instagram.com")]'
+    )
+    footer_twitter = WebElement(
+        xpath='//footer//a[contains(@href, "twitter.com")]'
+    )
+    footer_facebook = WebElement(
+        xpath='//footer//a[contains(@href, "facebook.com")]'
+    )
+    footer_youtube = WebElement(
+        xpath='//footer//a[contains(@href, "youtube.com")]'
+    )
+    footer_privacy_policy = WebElement(
+        xpath='//footer//a[@href="/policies/privacy-policy"]'
+    )
+    footer_refund_policy = WebElement(
+        xpath='//footer//a[@href="/policies/refund-policy"]'
+    )
+    footer_terms_of_service = WebElement(
+        xpath='//footer//a[@href="/policies/terms-of-service"]'
+    )
+    footer_legal_notice = WebElement(
+        xpath='//footer//a[@href="/policies/legal-notice"]'
+    )
+
+    # ======================== GENERIC ========================
+
+    main_content = WebElement(
+        xpath='//*[@id="MainContent"]'
+    )
+    h1_title = WebElement(
+        xpath='//h1'
+    )
+    page_title = WebElement(
+        xpath='//title'
+    )
+    all_images = ManyWebElements(
+        xpath='//img'
+    )
+    all_links = ManyWebElements(
+        xpath='//a'
+    )
+
+    # ======================== COLLECTION URLS ========================
+
+    @staticmethod
+    def collection_url(slug):
+        return f"{BASE_URL}/collections/{slug}"
+
+    COLLECTIONS = {
+        'all': 'collections/all',
+        'hibana': 'collections/hibana',
+        'zanmu': 'collections/2nd-original-album-zanmu',
+        'shinzou': 'collections/shinzou',
+        'yodaka': 'collections/yodaka',
+        'vivarium': 'collections/vivarium',
+        'best_adobum': 'collections/ados-best-adobum',
+        'phantom_siita': 'collections/phantom-siita',
+        'horror_queen': 'collections/horror-queen',
+        'mona_lisa': 'collections/profile_of_mona_lisa',
+        'crunchyroll': 'collections/crunchyroll-goods',
+        'all_merch': 'collections/all-merch',
+        'calendar': 'collections/ado-official-calendar-2025',
+    }
