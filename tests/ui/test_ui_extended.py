@@ -1,3 +1,5 @@
+"""Расширенные UI-тесты: загрузка страниц, изображения, ссылки, скроллинг, заголовки."""
+
 import time
 import pytest
 import allure
@@ -47,7 +49,6 @@ class TestPageLoad:
         assert page.product_title_links.count() > 0
         href = page.product_title_links[0].get_attribute("href")
         driver.get(href)
-        time.sleep(3)
         state = driver.execute_script("return document.readyState")
         assert state == "complete"
 

@@ -1,4 +1,5 @@
-import time
+"""Тесты отображения элементов: хедер, логотип, поиск, футер, навигация."""
+
 import pytest
 import allure
 from selenium.webdriver.common.by import By
@@ -34,7 +35,6 @@ class TestHeaderElements:
         open_page(driver, "collections/all")
         page = MainPage(driver)
         page.header_logo.click()
-        time.sleep(2)
         assert driver.current_url.rstrip("/") == BASE_URL.rstrip("/")
 
 
@@ -53,7 +53,6 @@ class TestSearchElements:
     def test_search_input_appears(self, driver):
         page = open_page(driver)
         page.search_toggle.click()
-        time.sleep(1)
         assert page.search_input.is_visible()
 
     @allure.story("Search input accepts and clears text")
@@ -62,7 +61,6 @@ class TestSearchElements:
         page = open_page(driver)
         page.search_toggle.click()
         page.search_input.send_keys("test query")
-        time.sleep(1)
         val = page.search_input.get_attribute("value")
         assert val == "test query"
 

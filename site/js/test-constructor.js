@@ -150,7 +150,16 @@
 
       lines.forEach(line=>{
         const trimmed=line.trim();
-        if(trimmed.includes('PASSED')&&trimmed.includes('::')){
+        // Формат 2: "FAILED tests/file.py::test_name" на отдельной строке
+        if(trimmed.startsWith('FAILED')&&trimmed.includes('::')){
+          const m=trimmed.match(/FAILED\s+(\S+::\S+)/);
+          if(m){
+            let name=m[1].split('::').pop();
+            pytestTests.push({name:name,status:'failed',duration:'0s',error:trimmed.substring(0,120)});
+            f++;
+          }
+        // Формат 1: "tests/file.py::test_name PASSED [10%]"
+        }else if(trimmed.includes('PASSED')&&trimmed.includes('::')){
           const m=trimmed.match(/(\S+::\S+)\s+PASSED/);
           if(m){
             let name=m[1].split('::').pop();

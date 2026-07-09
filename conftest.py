@@ -31,15 +31,8 @@ def driver():
     chrome_options.add_argument('--disable-dev-shm-usage')
 
     driver = webdriver.Chrome(options=chrome_options)
-    driver.implicitly_wait(10)
+    driver.implicitly_wait(2)
 
     yield driver
 
     driver.quit()
-
-
-@pytest.fixture(autouse=True)
-def _reset_page(driver):
-    """Переход на главную после каждого теста."""
-    yield
-    driver.get(BASE_URL)

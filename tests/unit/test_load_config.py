@@ -1,3 +1,5 @@
+"""Unit-тесты конфигурации нагрузочного тестирования."""
+
 import pytest
 from helpers.load_config import PAGES
 from helpers.config import MAIN_URL

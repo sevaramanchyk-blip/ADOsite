@@ -1,4 +1,5 @@
-import time
+"""Тесты магазина ADO: коллекции, страницы товаров, навигация."""
+
 import pytest
 import allure
 from selenium.webdriver.common.by import By
@@ -52,7 +53,6 @@ class TestProductPages:
         assert page.product_title_links.count() > 0
         href = page.product_title_links[0].get_attribute("href")
         driver.get(href)
-        time.sleep(3)
 
     @allure.story("Product page has h1")
     @allure.severity(allure.severity_level.CRITICAL)
@@ -126,9 +126,7 @@ class TestNavigation:
         assert page.collection_product_items.count() > 0
         href = page.product_title_links[0].get_attribute("href")
         driver.get(href)
-        time.sleep(3)
         product_page = MainPage(driver)
         assert product_page.product_title.get_text()
         driver.back()
-        time.sleep(2)
         assert "hibana" in driver.current_url

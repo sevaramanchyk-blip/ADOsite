@@ -1,3 +1,9 @@
+"""Локаторы элементов главной страницы и подстраниц магазина.
+
+Содержит класс MainPage с XPath-локаторами для всех ключевых
+элементов сайта: хедер, поиск, коллекции, товары, корзина, футер.
+"""
+
 import os
 from core.pages.elements import WebElement, ManyWebElements
 from core.pages.base_page import WebPage
@@ -5,6 +11,13 @@ from helpers.config import MAIN_URL, BASE_URL
 
 
 class MainPage(WebPage):
+    """Страница магазина ADO с локаторами всех элементов.
+
+    Наследует WebPage для навигации и ожидания загрузки.
+    Каждый WebElement — локатор, который привязывается к драйверу
+    при обращении через атрибут страницы.
+    """
+
     def __init__(self, web_driver, url=''):
         if not url:
             url = os.getenv("MAIN_PAGE") or MAIN_URL

@@ -1,4 +1,5 @@
-import time
+"""Проверка орфографии: заголовки страниц, текст товаров, политики."""
+
 import pytest
 import allure
 from selenium.webdriver.common.by import By
@@ -75,7 +76,6 @@ class TestProductSpellcheck:
         assert page.product_title_links.count() > 0
         href = page.product_title_links[0].get_attribute("href")
         driver.get(href)
-        time.sleep(3)
 
     @allure.story("Product title not empty")
     @allure.severity(allure.severity_level.CRITICAL)

@@ -1,4 +1,5 @@
-import time
+"""Бизнес-сценарии: корзина, выбор товара, поиск."""
+
 import pytest
 import allure
 from selenium.webdriver.common.by import By
@@ -55,7 +56,6 @@ class TestProductSelection:
     def test_add_to_cart_button(self, driver):
         href = self._get_first_product_url(driver)
         driver.get(href)
-        time.sleep(3)
         page = MainPage(driver)
         assert page.product_add_to_cart.is_visible()
 
@@ -64,7 +64,6 @@ class TestProductSelection:
     def test_product_has_price(self, driver):
         href = self._get_first_product_url(driver)
         driver.get(href)
-        time.sleep(3)
         page = MainPage(driver)
         assert page.product_price.is_visible()
 
@@ -73,7 +72,6 @@ class TestProductSelection:
     def test_product_has_title(self, driver):
         href = self._get_first_product_url(driver)
         driver.get(href)
-        time.sleep(3)
         page = MainPage(driver)
         title = page.product_title.get_text()
         assert title and title.strip()
@@ -83,7 +81,6 @@ class TestProductSelection:
     def test_product_has_description(self, driver):
         href = self._get_first_product_url(driver)
         driver.get(href)
-        time.sleep(3)
         page = MainPage(driver)
         assert page.product_description.is_visible()
 
@@ -92,7 +89,6 @@ class TestProductSelection:
     def test_product_has_image(self, driver):
         href = self._get_first_product_url(driver)
         driver.get(href)
-        time.sleep(3)
         page = MainPage(driver)
         assert page.product_image.is_visible()
 
@@ -101,7 +97,6 @@ class TestProductSelection:
     def test_product_image_has_src(self, driver):
         href = self._get_first_product_url(driver)
         driver.get(href)
-        time.sleep(3)
         page = MainPage(driver)
         src = page.product_image.get_attribute("src")
         assert src and src.startswith("http")
@@ -117,7 +112,6 @@ class TestSearchFlow:
         page = open_page(driver)
         page.search_toggle.click()
         page.search_input.send_keys("Zanmu")
-        time.sleep(3)
         assert page.search_results.is_visible()
 
     @allure.story("Search with no results")
@@ -126,7 +120,6 @@ class TestSearchFlow:
         page = open_page(driver)
         page.search_toggle.click()
         page.search_input.send_keys("zzzznonexistent12345")
-        time.sleep(3)
         results = driver.find_elements(
             By.XPATH, "//*[contains(text(),'No results')]"
         )

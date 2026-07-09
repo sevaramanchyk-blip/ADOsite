@@ -1,6 +1,9 @@
+"""Утилиты: извлечение текста со страницы и поиск опечаток."""
+
 import re
 from selenium.webdriver.common.by import By
 
+# Словарь распространённых опечаток: {неправильно: правильно}
 COMMON_TYPOS = {
     "teh": "the",
     "recieve": "receive",
@@ -25,6 +28,7 @@ COMMON_TYPOS = {
 
 
 def get_visible_text(driver):
+    """Извлекает видимый текст со всех элементов страницы."""
     elements = driver.find_elements(
         By.CSS_SELECTOR,
         "h1, h2, h3, h4, h5, h6, p, span, a, "
@@ -41,6 +45,7 @@ def get_visible_text(driver):
 
 
 def find_typos(texts):
+    """Ищет опечатки в списке текстов по словарю COMMON_TYPOS."""
     found = []
     for text in texts:
         words = re.findall(r'\b[a-zA-Z]+\b', text.lower())

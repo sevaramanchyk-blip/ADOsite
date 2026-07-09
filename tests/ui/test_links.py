@@ -1,4 +1,5 @@
-import time
+"""Проверка внутренних и внешних ссылок сайта: все страницы, соцсети."""
+
 import pytest
 import allure
 import requests

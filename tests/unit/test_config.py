@@ -1,3 +1,5 @@
+"""Unit-тесты конфигурации: проверка URL и коллекций."""
+
 import pytest
 from helpers.config import BASE_URL, MAIN_URL, COLLECTIONS
 

@@ -1,8 +1,12 @@
+"""Locust-файл для нагрузочного тестирования: поведение виртуального пользователя."""
+
 from locust import HttpUser, task, between
 
 
 class AdoShopUser(HttpUser):
-    wait_time = between(1, 3)
+    """Виртуальный пользователь, имитирующий реальные действия на сайте."""
+
+    wait_time = between(1, 3)  # Пауза 1-3 сек между запросами
 
     @task(5)
     def index_page(self):

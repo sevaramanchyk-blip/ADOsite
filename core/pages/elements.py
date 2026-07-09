@@ -1,3 +1,10 @@
+"""Элементы страниц для паттерна Page Object.
+
+WebElement — обёртка над Selenium-элементом с методами поиска,
+клика, ввода текста и проверки видимости.
+ManyWebElements — список элементов (для навигации, товаров и т.д.).
+"""
+
 #!/usr/bin/python3
 # -*- encoding=utf8 -*-
 
@@ -11,13 +18,20 @@ from selenium.webdriver.common.keys import Keys
 
 
 class WebElement(object):
+    """Один элемент на странице, привязанный к XPath-локатору.
+
+    Локатор задаётся через именованные аргументы:
+        WebElement(xpath='//button') — поиск по XPath
+        WebElement(css='div.class') — поиск по CSS-селектору
+    """
+
     _locator = ('', '')
     _web_driver = None
     _page = None
-    _timeout = 10
+    _timeout = 5
     _wait_after_click = False  # TODO: how we can wait after click?
 
-    def __init__(self, timeout=10, wait_after_click=False, **kwargs):
+    def __init__(self, timeout=5, wait_after_click=False, **kwargs):
         self._timeout = timeout
         self._wait_after_click = wait_after_click
 
@@ -27,7 +41,7 @@ class WebElement(object):
                 str(kwargs.get(attr))
             )
 
-    def find(self, timeout=10):
+    def find(self, timeout=2):
         """ Найти элемент на странице. """
 
         element = None
@@ -41,7 +55,7 @@ class WebElement(object):
 
         return element
 
-    def wait_to_be_clickable(self, timeout=10, check_visibility=True):
+    def wait_to_be_clickable(self, timeout=2, check_visibility=False):
         """ Подождfть пока элемент будет готов к клику. """
 
         element = None
@@ -52,9 +66,6 @@ class WebElement(object):
             )
         except Exception:
             print(colored('Element not clickable!', 'red'))
-
-        if check_visibility:
-            self.wait_until_not_visible()
 
         return element
 
@@ -80,7 +91,7 @@ class WebElement(object):
 
         return False
 
-    def wait_until_not_visible(self, timeout=10):
+    def wait_until_not_visible(self, timeout=5):
 
         element = None
 
@@ -89,37 +100,11 @@ class WebElement(object):
                 EC.visibility_of_element_located(self._locator)
             )
         except Exception:
-            print(colored('Element not visible!', 'red'))
-
-        if element:
-            js = (
-                'return (!(arguments[0].offsetParent === null) && '
-                '!(window.getComputedStyle(arguments[0]) '
-                '=== "none") &&'
-                'arguments[0].offsetWidth > 0 && '
-                'arguments[0].offsetHeight > 0'
-                ');'
-            )
-            visibility = self._web_driver.execute_script(js, element)
-            iteration = 0
-
-            while not visibility and iteration < 10:
-                time.sleep(0.5)
-
-                iteration += 1
-
-                visibility = self._web_driver.execute_script(
-                    js, element
-                )
-                print(
-                    'Element {0} visibility: {1}'.format(
-                        self._locator, visibility
-                    )
-                )
+            pass
 
         return element
 
-    def send_keys(self, keys, wait=2):
+    def send_keys(self, keys, wait=0.5):
         """ Написать текст. """
 
         keys = keys.replace('\n', '\ue007')
@@ -242,6 +227,11 @@ class WebElement(object):
 
 
 class ManyWebElements(WebElement):
+    """Список элементов на странице (поиск всех совпадений по локатору).
+
+    Поддерживает получение по индексу [i], подсчёт count(),
+    получение текста/атрибутов всех элементов.
+    """
 
     def __getitem__(self, item):
         """ Получить список элементов и попытаться вернуть
@@ -250,7 +240,7 @@ class ManyWebElements(WebElement):
         elements = self.find()
         return elements[item]
 
-    def find(self, timeout=10):
+    def find(self, timeout=3):
         """ Найти элемент на странице. """
 
         elements = []

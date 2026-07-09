@@ -14,6 +14,7 @@ import sys
 import signal
 import warnings
 from pathlib import Path
+from html import escape as html_escape
 
 warnings.filterwarnings("ignore", category=ResourceWarning)
 from dotenv import load_dotenv
@@ -210,13 +211,18 @@ MAIN_MENU = InlineKeyboardMarkup([
     ],
     [
         InlineKeyboardButton(
-            "📇 Визитка", callback_data="contact_card"
-        ),
-        InlineKeyboardButton(
             "🔗 Ссылки", callback_data="run_links"
         ),
     ],
 ])
+
+
+async def safe_answer(query):
+    """Безопасно отвечает на callback query (игнорирует expired)."""
+    try:
+        await query.answer()
+    except Exception:
+        pass
 
 
 async def execute_command(cmd: str, timeout: int = 300) -> str:
@@ -283,22 +289,54 @@ async def track_message(context, chat_id, msg, user_data):
     )
 
 
-def format_api_results(result: str) -> str:
-    """Форматирует результаты API тестов в HTML-таблицу."""
+def _truncate(text, max_len=4000):
+    """Обрезает текст по строкам, не ломая HTML-теги.
+
+    Если сообщение длиннее max_len — обрезает на последнем переносе
+    строки перед лимитом и добавляет пометку (обрезано).
+    Лимит 4000 — максимальная длина сообщения в Telegram (4096 минус запас).
+    """
+    if len(text) <= max_len:
+        return text
+    cut = text[:max_len]
+    last_nl = cut.rfind('\n')
+    if last_nl > max_len - 200:
+        cut = cut[:last_nl]
+    return cut + "\n\n... <i>(обрезано)</i>"
+
+
+def _parse_pytest_output(result: str):
+    """Парсит вывод pytest, извлекая PASSED/FAILED тесты.
+
+    Обрабатывает два формата вывода:
+    1) tests/file.py::TestClass::test_name PASSED [ 10%]
+    2) FAILED tests/file.py::TestClass::test_name — traceback
+    """
     lines = result.split('\n')
     passed = []
     failed = []
+    errors = []
+    i = 0
 
-    # Парсим вывод pytest: извлекаем имена тестов и их статусы
-    for line in lines:
-        if 'PASSED' in line or 'FAILED' in line:
-            match = re.search(
-                r'(.+?)\s+(PASSED|FAILED)', line
-            )
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+
+        # Формат 2: "FAILED tests/..." на отдельной строке (short test summary)
+        if stripped.startswith('FAILED'):
+            match = re.search(r'FAILED\s+(.+?)(?:\s+-|$)', stripped)
+            if match:
+                name = match.group(1).strip()
+                if '::' in name:
+                    name = name.split('::')[-1]
+                failed.append(name)
+
+        # Формат 1: "tests/file.py::test_name PASSED [ 10%]"
+        elif 'PASSED' in line or 'FAILED' in line:
+            match = re.search(r'(.+?)\s+(PASSED|FAILED)', line)
             if match:
                 name = match.group(1).strip()
                 status = match.group(2)
-                # Убираем префикс модуля (module::test_name -> test_name)
                 if '::' in name:
                     name = name.split('::')[-1]
                 if status == 'PASSED':
@@ -306,166 +344,109 @@ def format_api_results(result: str) -> str:
                 else:
                     failed.append(name)
 
+        elif 'ERROR' in line and 'error' in line.lower():
+            errors.append(line.strip())
+
+        i += 1
+
+    return passed, failed, errors
+
+
+def format_api_results(result: str) -> str:
+    """Форматирует результаты API тестов в HTML-таблицу."""
+    passed, failed, errors = _parse_pytest_output(result)
+
     total = len(passed) + len(failed)
-    if total == 0:
-        return None
+    success_rate = len(passed) / total * 100 if total > 0 else 0
 
-    success_rate = len(passed) / total * 100
-
-    # Формируем красивый отчёт с эмодзи и статистикой
-    table = f"🚀 <b>API тесты</b> — {len(passed)}/{total}\n{SEP}\n"
-    table += f"<code>✅ Пройдено: {len(passed)}\n"
-    table += f"❌ Провалено: {len(failed)}\n"
-    table += f"📊 Успешность: {success_rate:.0f}%</code>\n"
+    table = f"🚀 <b>API тесты</b> — {len(passed)}/{total}\n"
+    table += f"<code>✅ {len(passed)} | ❌ {len(failed)} | {success_rate:.0f}%</code>\n"
 
     if passed:
         table += "<b>Пройденные:</b>\n"
         for name in passed:
-            short = name.split('[')[1].rstrip(']') if '[' in name else name
-            table += f"  ✅ <code>{short}</code>\n"
+            table += f"  ✅ {html_escape(name)}\n"
 
     if failed:
-        table += "\n<b>Проваленные:</b>\n"
+        table += "<b>Проваленные:</b>\n"
         for name in failed:
-            short = name.split('[')[1].rstrip(']') if '[' in name else name
-            table += f"  ❌ <code>{short}</code>\n"
+            table += f"  ❌ {html_escape(name)}\n"
 
-    return table
+    if errors:
+        table += "<b>Ошибки сборки:</b>\n"
+        for err in errors[:3]:
+            table += f"  ⚠️ {html_escape(err[:80])}\n"
+
+    return _truncate(table)
 
 
 def format_ui_results(result: str) -> str:
     """Форматирует результаты UI тестов в HTML-таблицу."""
-    lines = result.split('\n')
-    passed = []
-    failed = []
-
-    for line in lines:
-        if 'PASSED' in line or 'FAILED' in line:
-            match = re.search(
-                r'(.+?)\s+(PASSED|FAILED)', line
-            )
-            if match:
-                name = match.group(1).strip()
-                status = match.group(2)
-                if '::' in name:
-                    name = name.split('::')[-1]
-                if status == 'PASSED':
-                    passed.append(name)
-                else:
-                    failed.append(name)
+    passed, failed, errors = _parse_pytest_output(result)
 
     total = len(passed) + len(failed)
-    if total == 0:
-        return None
+    success_rate = len(passed) / total * 100 if total > 0 else 0
 
-    success_rate = len(passed) / total * 100
-
-    table = f"🌐 <b>UI тесты</b> — {len(passed)}/{total}\n{SEP}\n"
-    table += f"<code>✅ Пройдено: {len(passed)}\n"
-    table += f"❌ Провалено: {len(failed)}\n"
-    table += f"📊 Успешность: {success_rate:.0f}%</code>\n"
+    table = f"🌐 <b>UI тесты</b> — {len(passed)}/{total}\n"
+    table += f"<code>✅ Пройдено: {len(passed)} | ❌ Провалено: {len(failed)} | 📊 {success_rate:.0f}%</code>\n"
 
     if passed:
-        table += "\n<b>Пройденные:</b>\n"
+        table += "<b>Пройденные:</b>\n"
         for name in passed:
-            table += f"  ✅ <code>{name}</code>\n"
+            table += f"  ✅ {html_escape(name)}\n"
 
     if failed:
-        table += "\n<b>Проваленные:</b>\n"
+        table += "<b>Проваленные:</b>\n"
         for name in failed:
-            table += f"  ❌ <code>{name}</code>\n"
+            table += f"  ❌ {html_escape(name)}\n"
 
-    return table
+    return _truncate(table)
 
 
 def format_load_results(result: str) -> str:
     """Форматирует результаты нагрузочного теста в HTML-таблицу."""
-    lines = result.split('\n')
-    passed = []
-    failed = []
-
-    for line in lines:
-        if 'PASSED' in line or 'FAILED' in line:
-            match = re.search(
-                r'(.+?)\s+(PASSED|FAILED)', line
-            )
-            if match:
-                name = match.group(1).strip()
-                status = match.group(2)
-                if '::' in name:
-                    name = name.split('::')[-1]
-                if status == 'PASSED':
-                    passed.append(name)
-                else:
-                    failed.append(name)
+    passed, failed, errors = _parse_pytest_output(result)
 
     total = len(passed) + len(failed)
-    if total == 0:
-        return None
+    success_rate = len(passed) / total * 100 if total > 0 else 0
 
-    success_rate = len(passed) / total * 100
-
-    table = f"⚡ <b>Нагрузочный тест</b> — {len(passed)}/{total}\n{SEP}\n"
-    table += f"<code>✅ Пройдено: {len(passed)}\n"
-    table += f"❌ Провалено: {len(failed)}\n"
-    table += f"📊 Успешность: {success_rate:.0f}%</code>\n"
+    table = f"⚡ <b>Нагрузочный тест</b> — {len(passed)}/{total}\n"
+    table += f"<code>✅ Пройдено: {len(passed)} | ❌ Провалено: {len(failed)} | 📊 {success_rate:.0f}%</code>\n"
 
     if passed:
-        table += "\n<b>Пройденные:</b>\n"
+        table += "<b>Пройденные:</b>\n"
         for name in passed:
-            table += f"  ✅ <code>{name}</code>\n"
+            table += f"  ✅ {html_escape(name)}\n"
 
     if failed:
-        table += "\n<b>Проваленные:</b>\n"
+        table += "<b>Проваленные:</b>\n"
         for name in failed:
-            table += f"  ❌ <code>{name}</code>\n"
+            table += f"  ❌ {html_escape(name)}\n"
 
-    return table
+    return _truncate(table)
 
 
 def format_results_generic(result: str, label: str, icon: str) -> str:
-    """Универсальный форматировщик результатов тестов с настраиваемой подписью."""
-    lines = result.split('\n')
-    passed = []
-    failed = []
-
-    for line in lines:
-        if 'PASSED' in line or 'FAILED' in line:
-            match = re.search(
-                r'(.+?)\s+(PASSED|FAILED)', line
-            )
-            if match:
-                name = match.group(1).strip()
-                status = match.group(2)
-                if '::' in name:
-                    name = name.split('::')[-1]
-                if status == 'PASSED':
-                    passed.append(name)
-                else:
-                    failed.append(name)
+    """Универсальный форматировщик: принимает label и icon для шапки."""
+    passed, failed, errors = _parse_pytest_output(result)
 
     total = len(passed) + len(failed)
-    if total == 0:
-        return None
+    success_rate = len(passed) / total * 100 if total > 0 else 0
 
-    success_rate = len(passed) / total * 100
-
-    table = f"{icon} <b>{label}</b> — {len(passed)}/{total}\n{SEP}\n"
-    table += f"<code>✅ Пройдено: {len(passed)}\n"
-    table += f"❌ Провалено: {len(failed)}\n"
-    table += f"📊 Успешность: {success_rate:.0f}%</code>\n"
+    table = f"{icon} <b>{label}</b> — {len(passed)}/{total}\n"
+    table += f"<code>✅ Пройдено: {len(passed)} | ❌ Провалено: {len(failed)} | 📊 {success_rate:.0f}%</code>\n"
 
     if passed:
-        table += "\n<b>Пройденные:</b>\n"
+        table += "<b>Пройденные:</b>\n"
         for name in passed:
-            table += f"  ✅ <code>{name}</code>\n"
+            table += f"  ✅ {html_escape(name)}\n"
 
     if failed:
-        table += "\n<b>Проваленные:</b>\n"
+        table += "<b>Проваленные:</b>\n"
         for name in failed:
-            table += f"  ❌ <code>{name}</code>\n"
+            table += f"  ❌ {html_escape(name)}\n"
 
-    return table
+    return _truncate(table)
 
 
 async def start(
@@ -489,19 +470,18 @@ async def start(
 async def run_api_command(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
-    """Запуск API тестов по команде /run_api_test."""
+    """Обработчик команды /run_api_test — запуск API тестов из чата."""
     chat_id = update.effective_chat.id
     await cleanup_messages(context, chat_id, context.user_data)
     msg = await update.message.reply_text('🚀 Запуск API тестов...')
     await track_message(context, chat_id, msg, context.user_data)
     clear_results()
     result = await execute_command(
-        'pytest -s -v tests/api --alluredir=./results'
+        'pytest -v tests/api --tb=no'
     )
     text = format_api_results(result)
     msg = await update.message.reply_text(
-        text or "✅ Все API тесты прошли успешно!",
-        parse_mode='HTML',
+        text, parse_mode='HTML',
         reply_markup=MAIN_MENU
     )
     await track_message(context, chat_id, msg, context.user_data)
@@ -510,19 +490,18 @@ async def run_api_command(
 async def run_ui_command(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
-    """Запуск UI тестов по команде /run_ui_test."""
+    """Обработчик команды /run_ui_test — запуск UI тестов из чата."""
     chat_id = update.effective_chat.id
     await cleanup_messages(context, chat_id, context.user_data)
     msg = await update.message.reply_text('🌐 Запуск UI тестов...')
     await track_message(context, chat_id, msg, context.user_data)
     clear_results()
     result = await execute_command(
-        'pytest -s -v tests/ui --alluredir=./results'
+        'pytest -v tests/ui --tb=no', timeout=600
     )
     text = format_ui_results(result)
     msg = await update.message.reply_text(
-        text or "✅ Все UI тесты прошли успешно!",
-        parse_mode='HTML',
+        text, parse_mode='HTML',
         reply_markup=MAIN_MENU
     )
     await track_message(context, chat_id, msg, context.user_data)
@@ -534,7 +513,7 @@ async def callback_run_api(
     """Обработчик кнопки 'API тесты' — запуск API тестов."""
     query = update.callback_query
     chat_id = query.message.chat_id
-    await query.answer()
+    await safe_answer(query)
     await cleanup_messages(
         context, chat_id, context.user_data,
         except_id=query.message.message_id
@@ -545,12 +524,11 @@ async def callback_run_api(
     await track_message(context, chat_id, msg, context.user_data)
     clear_results()
     result = await execute_command(
-        'pytest -s -v tests/api --alluredir=./results'
+        'pytest -v tests/api --tb=no'
     )
     text = format_api_results(result)
     msg = await query.message.reply_text(
-        text or "✅ Все API тесты прошли успешно!",
-        parse_mode='HTML'
+        text, parse_mode='HTML'
     )
     await track_message(context, chat_id, msg, context.user_data)
 
@@ -561,7 +539,7 @@ async def callback_run_ui(
     """Обработчик кнопки 'UI тесты' — запуск UI тестов."""
     query = update.callback_query
     chat_id = query.message.chat_id
-    await query.answer()
+    await safe_answer(query)
     await cleanup_messages(
         context, chat_id, context.user_data,
         except_id=query.message.message_id
@@ -572,12 +550,11 @@ async def callback_run_ui(
     await track_message(context, chat_id, msg, context.user_data)
     clear_results()
     result = await execute_command(
-        'pytest -s -v tests/ui --alluredir=./results'
+        'pytest -v tests/ui --tb=no', timeout=600
     )
     text = format_ui_results(result)
     msg = await query.message.reply_text(
-        text or "✅ Все UI тесты прошли успешно!",
-        parse_mode='HTML'
+        text, parse_mode='HTML'
     )
     await track_message(context, chat_id, msg, context.user_data)
 
@@ -588,7 +565,7 @@ async def callback_run_spell(
     """Обработчик кнопки 'Орфография' — проверка орфографии на сайте."""
     query = update.callback_query
     chat_id = query.message.chat_id
-    await query.answer()
+    await safe_answer(query)
     await cleanup_messages(
         context, chat_id, context.user_data,
         except_id=query.message.message_id
@@ -599,15 +576,13 @@ async def callback_run_spell(
     await track_message(context, chat_id, msg, context.user_data)
     clear_results()
     result = await execute_command(
-        'pytest -s -v tests/ui/test_spellcheck.py '
-        '--alluredir=./results'
+        'pytest -v tests/ui/test_spellcheck.py --tb=no'
     )
     text = format_results_generic(
         result, "Проверка орфографии", "📝"
     )
     msg = await query.message.reply_text(
-        text or "✅ Орфография в порядке!",
-        parse_mode='HTML'
+        text, parse_mode='HTML'
     )
     await track_message(context, chat_id, msg, context.user_data)
 
@@ -618,7 +593,7 @@ async def callback_run_elements(
     """Обработчик кнопки 'Элементы' — проверка отображения элементов."""
     query = update.callback_query
     chat_id = query.message.chat_id
-    await query.answer()
+    await safe_answer(query)
     await cleanup_messages(
         context, chat_id, context.user_data,
         except_id=query.message.message_id
@@ -629,15 +604,13 @@ async def callback_run_elements(
     await track_message(context, chat_id, msg, context.user_data)
     clear_results()
     result = await execute_command(
-        'pytest -s -v tests/ui/test_elements.py '
-        '--alluredir=./results'
+        'pytest -v tests/ui/test_elements.py --tb=no'
     )
     text = format_results_generic(
         result, "Отображение элементов", "👁"
     )
     msg = await query.message.reply_text(
-        text or "✅ Все элементы отображаются!",
-        parse_mode='HTML'
+        text, parse_mode='HTML'
     )
     await track_message(context, chat_id, msg, context.user_data)
 
@@ -648,7 +621,7 @@ async def callback_run_business(
     """Обработчик кнопки 'Сценарии' — запуск бизнес-сценариев."""
     query = update.callback_query
     chat_id = query.message.chat_id
-    await query.answer()
+    await safe_answer(query)
     await cleanup_messages(
         context, chat_id, context.user_data,
         except_id=query.message.message_id
@@ -659,15 +632,13 @@ async def callback_run_business(
     await track_message(context, chat_id, msg, context.user_data)
     clear_results()
     result = await execute_command(
-        'pytest -s -v tests/ui/test_business.py '
-        '--alluredir=./results'
+        'pytest -v tests/ui/test_business.py --tb=no'
     )
     text = format_results_generic(
         result, "Бизнес-сценарии", "💼"
     )
     msg = await query.message.reply_text(
-        text or "✅ Все сценарии пройдены!",
-        parse_mode='HTML'
+        text, parse_mode='HTML'
     )
     await track_message(context, chat_id, msg, context.user_data)
 
@@ -678,7 +649,7 @@ async def callback_about_ado(
     """Обработчик кнопки 'Про Ado' — показывает информацию об исполнителе."""
     query = update.callback_query
     chat_id = query.message.chat_id
-    await query.answer()
+    await safe_answer(query)
     await cleanup_messages(
         context, chat_id, context.user_data,
         except_id=query.message.message_id
@@ -714,7 +685,7 @@ async def callback_ado_songs(
     """Обработчик кнопки 'Песни Ado' — список песен с ссылками на YouTube."""
     query = update.callback_query
     chat_id = query.message.chat_id
-    await query.answer()
+    await safe_answer(query)
     await cleanup_messages(
         context, chat_id, context.user_data,
         except_id=query.message.message_id
@@ -750,7 +721,7 @@ async def callback_back_to_main(
 ):
     """Обработчик кнопки 'Назад' — возврат в главное меню."""
     query = update.callback_query
-    await query.answer()
+    await safe_answer(query)
     await query.edit_message_text(
         "Выбери действие 👇",
         reply_markup=MAIN_MENU
@@ -763,7 +734,7 @@ async def callback_run_links(
     """Обработчик кнопки 'Ссылки' — проверка всех внутренних ссылок."""
     query = update.callback_query
     chat_id = query.message.chat_id
-    await query.answer()
+    await safe_answer(query)
     await cleanup_messages(
         context, chat_id, context.user_data,
         except_id=query.message.message_id
@@ -774,15 +745,13 @@ async def callback_run_links(
     await track_message(context, chat_id, msg, context.user_data)
     clear_results()
     result = await execute_command(
-        'pytest -s -v tests/ui/test_links.py '
-        '--alluredir=./results'
+        'pytest -v tests/ui/test_links.py --tb=no'
     )
     text = format_results_generic(
         result, "Проверка ссылок", "🔗"
     )
     msg = await query.message.reply_text(
-        text or "✅ Все ссылки работают!",
-        parse_mode='HTML'
+        text, parse_mode='HTML'
     )
     await track_message(context, chat_id, msg, context.user_data)
 
@@ -790,24 +759,35 @@ async def callback_run_links(
 async def callback_about_me(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
-    """Обработчик кнопки 'Обо мне' — информация о QA-инженере."""
+    """Обработчик кнопки 'Обо мне' — визитка QA-инженера."""
     query = update.callback_query
     chat_id = query.message.chat_id
-    await query.answer()
+    await safe_answer(query)
     await cleanup_messages(
         context, chat_id, context.user_data,
         except_id=query.message.message_id
     )
     await query.edit_message_text(
-        f"👤 <b>Обо мне</b>\n{SEP}\n\n"
-        f"QA-инженер 🔧\n\n"
+        f"👤 <b>Всеволод Романчик</b>\n"
+        f"💼 QA Automation Engineer\n{SEP}\n\n"
+        f"━━━━ <b>Контакты</b> ━━━━\n"
+        f"📧 seva.ramanchyk@gmail.com\n"
+        f"📱 +375 (44) 758-27-67\n"
+        f"📍 Минск, Беларусь\n\n"
         f"━━━━ <b>Навыки</b> ━━━━\n"
-        f"🔹 Автоматизация тестов (API + UI)\n"
-        f"🔹 Python, Selenium, Pytest, Allure\n"
-        f"🔹 Telegram-боты\n\n"
+        f"🔹 Python / pytest\n"
+        f"🔹 UI-автоматизация (Selenium)\n"
+        f"🔹 API-тестирование (REST)\n"
+        f"🔹 Allure / BDD (Cucumber)\n"
+        f"🔹 CI/CD (GitHub Actions)\n"
+        f"🔹 Docker\n\n"
+        f"━━━━ <b>Инструменты</b> ━━━━\n"
+        f"PyCharm, VS Code, Postman,\n"
+        f"Swagger, Jira, TestRail, Playwright\n\n"
         f"━━━━ <b>Проект</b> ━━━━\n"
         f"ADO Official Music Shop —\n"
-        f"тестирование интернет-магазина 🛒",
+        f"автоматизация тестирования 🛒\n\n"
+        f"🌐 <a href=\"https://ado-shop.com\">Сайт проекта</a>",
         parse_mode='HTML',
         reply_markup=MAIN_MENU
     )
@@ -819,7 +799,7 @@ async def callback_about_site(
     """Обработчик кнопки 'Магазин ADO' — информация о сайте ado-shop.com."""
     query = update.callback_query
     chat_id = query.message.chat_id
-    await query.answer()
+    await safe_answer(query)
     await cleanup_messages(
         context, chat_id, context.user_data,
         except_id=query.message.message_id
@@ -832,44 +812,8 @@ async def callback_about_site(
         f"━━━━ <b>Каталог</b> ━━━━\n"
         f"💿 Коллекции: Shinzou, Hibana, Zanmu\n"
         f"👕 Мерч: альбомы, футболки, аксессуары\n\n"
-        f"━━━━ <b>Технологии</b> ━━━━\n"
-        f"💻 Платформа: Shopify\n"
-        f"🧪 Тестирование: API + UI автотесты",
-        parse_mode='HTML',
-        reply_markup=MAIN_MENU
-    )
-
-
-async def callback_contact_card(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-):
-    """Обработчик кнопки 'Визитка' — контактная карточка QA-инженера."""
-    query = update.callback_query
-    chat_id = query.message.chat_id
-    await query.answer()
-    await cleanup_messages(
-        context, chat_id, context.user_data,
-        except_id=query.message.message_id
-    )
-    await query.edit_message_text(
-        f"📇 <b>Визитка</b>\n{SEP}\n\n"
-        f"👤 <b>Всеволод Романчик</b>\n"
-        f"💼 QA Automation Engineer\n\n"
-        f"━━━━ <b>Контакты</b> ━━━━\n"
-        f"📧 seva.ramanchyk@gmail.com\n"
-        f"📱 +375 (44) 758-27-67\n"
-        f"📍 Минск, Беларусь\n\n"
-        f"━━━━ <b>Навыки</b> ━━━━\n"
-        f"🔹 Python / pytest — ⭐⭐⭐⭐\n"
-        f"🔹 UI-автоматизация (Selenium) — ⭐⭐⭐⭐\n"
-        f"🔹 API-тестирование (REST) — ⭐⭐⭐⭐\n"
-        f"🔹 Allure / BDD (Cucumber) — ⭐⭐⭐⭐\n"
-        f"🔹 CI/CD (GitHub Actions) — ⭐⭐⭐\n"
-        f"🔹 Docker — ⭐⭐⭐\n\n"
-        f"━━━━ <b>Инструменты</b> ━━━━\n"
-        f"PyCharm, VS Code, Postman,\n"
-        f"Swagger, Jira, TestRail, Playwright\n\n"
-        f"🌐 <a href=\"https://ado-shop.com\">Сайт проекта</a>",
+        f"━━━━ <b>Платформа</b> ━━━━\n"
+        f"💻 Shopify",
         parse_mode='HTML',
         reply_markup=MAIN_MENU
     )
@@ -881,7 +825,7 @@ async def callback_run_all(
     """Обработчик кнопки 'Все тесты' — запуск всех тестов по очереди."""
     query = update.callback_query
     chat_id = query.message.chat_id
-    await query.answer()
+    await safe_answer(query)
     await cleanup_messages(
         context, chat_id, context.user_data,
         except_id=query.message.message_id
@@ -892,15 +836,13 @@ async def callback_run_all(
     await track_message(context, chat_id, msg, context.user_data)
     clear_results()
     result = await execute_command(
-        'pytest -s -v tests/api tests/ui '
-        '--alluredir=./results'
+        'pytest -v tests/api tests/ui --tb=no', timeout=600
     )
     text = format_results_generic(
         result, "Все тесты", "🔄"
     )
     msg = await query.message.reply_text(
-        text or "✅ Все тесты прошли успешно!",
-        parse_mode='HTML'
+        text, parse_mode='HTML'
     )
     await track_message(context, chat_id, msg, context.user_data)
 
@@ -911,7 +853,7 @@ async def callback_stats(
     """Обработчик кнопки 'Статистика' — показать статистику тестов."""
     query = update.callback_query
     chat_id = query.message.chat_id
-    await query.answer()
+    await safe_answer(query)
     await cleanup_messages(
         context, chat_id, context.user_data,
         except_id=query.message.message_id
@@ -945,7 +887,7 @@ async def callback_last_report(
     """Обработчик кнопки 'Отчёт' — показать последний отчёт."""
     query = update.callback_query
     chat_id = query.message.chat_id
-    await query.answer()
+    await safe_answer(query)
     await cleanup_messages(
         context, chat_id, context.user_data,
         except_id=query.message.message_id
@@ -977,7 +919,7 @@ async def callback_settings(
     """Обработчик кнопки 'Настройки' — показать настройки бота."""
     query = update.callback_query
     chat_id = query.message.chat_id
-    await query.answer()
+    await safe_answer(query)
     await cleanup_messages(
         context, chat_id, context.user_data,
         except_id=query.message.message_id
@@ -1032,7 +974,7 @@ async def callback_run_load(
     """Обработчик кнопки 'Нагрузочный тест' — запуск нагрузочного теста."""
     query = update.callback_query
     chat_id = query.message.chat_id
-    await query.answer()
+    await safe_answer(query)
     await cleanup_messages(
         context, chat_id, context.user_data,
         except_id=query.message.message_id
@@ -1124,11 +1066,6 @@ def main() -> None:
     application.add_handler(
         CallbackQueryHandler(
             callback_about_site, pattern="^about_site$"
-        )
-    )
-    application.add_handler(
-        CallbackQueryHandler(
-            callback_contact_card, pattern="^contact_card$"
         )
     )
     application.add_handler(

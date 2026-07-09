@@ -1,3 +1,5 @@
+"""Unit-тесты утилит: поиск опечаток."""
+
 import pytest
 from helpers.utils import find_typos, COMMON_TYPOS
 

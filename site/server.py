@@ -156,7 +156,27 @@ class ADOHandler(http.server.SimpleHTTPRequestHandler):
         for i, line in enumerate(lines):
             stripped = line.strip()
 
-            if '::' in stripped and 'PASSED' in stripped:
+            # Формат 2: "FAILED tests/file.py::test_name" на отдельной строке
+            if stripped.startswith('FAILED') and '::' in stripped:
+                match = re.search(r'FAILED\s+(\S+::\S+)', stripped)
+                if match:
+                    name = match.group(1).split('::')[-1]
+                    error_msg = ""
+                    for j in range(i + 1, min(i + 5, len(lines))):
+                        eline = lines[j].strip()
+                        if eline and 'FAILED' not in eline and 'ERRORS' not in eline:
+                            error_msg = eline[:120]
+                            break
+                    tests.append({
+                        "name": name,
+                        "status": "failed",
+                        "duration": "0s",
+                        "error": error_msg
+                    })
+                    failed += 1
+
+            # Формат 1: "tests/file.py::test_name PASSED [10%]"
+            elif '::' in stripped and 'PASSED' in stripped:
                 match = re.search(r'(\S+::\S+)\s+PASSED', stripped)
                 if match:
                     name = match.group(1).split('::')[-1]

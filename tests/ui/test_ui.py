@@ -1,4 +1,5 @@
-import time
+"""Основные UI-тесты: хедер, поиск, коллекции, товары, корзина, футер, навигация."""
+
 import pytest
 import allure
 from selenium.webdriver.common.by import By
@@ -74,7 +75,6 @@ class TestSearch:
         page = open_page(driver)
         page.search_toggle.click()
         page.search_input.send_keys("Zanmu")
-        time.sleep(2)
         assert page.search_results.is_visible()
 
 
@@ -135,7 +135,6 @@ class TestProducts:
         product_link = page.product_title_links[0]
         href = product_link.get_attribute("href")
         driver.get(href)
-        time.sleep(3)
 
     @allure.story("Product has title and price")
     @allure.title("Заголовок и цена")
@@ -290,11 +289,9 @@ class TestFlows:
         product_link = page.product_title_links[0]
         href = product_link.get_attribute("href")
         driver.get(href)
-        time.sleep(3)
         product_page = MainPage(driver)
         assert product_page.product_title.get_text()
         driver.back()
-        time.sleep(2)
         assert "hibana" in driver.current_url
 
     @allure.story("Multiple collections via URL")
@@ -316,5 +313,4 @@ class TestFlows:
         page.search_toggle.click()
         assert page.search_input.is_visible()
         page.search_input.send_keys("Hibana")
-        time.sleep(2)
         assert page.search_results.is_visible()

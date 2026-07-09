@@ -1,5 +1,8 @@
+"""Конфигурация нагрузочного тестирования: список страниц для проверки."""
+
 from helpers.config import MAIN_URL
 
+# Страницы, которые открываются параллельно при нагрузочном тесте
 PAGES = [
     MAIN_URL,
     f"{MAIN_URL}collections/all-merch",
