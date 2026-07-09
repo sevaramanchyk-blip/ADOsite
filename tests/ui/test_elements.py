@@ -1,10 +1,3 @@
-"""
-Тесты элементов страницы ADO Shop.
-
-Проверяют наличие и работоспособность базовых UI-элементов:
-хедера, логотипа, поиска, футера и навигационных ссылок.
-"""
-
 import time
 import pytest
 import allure
@@ -13,169 +6,125 @@ from helpers.config import BASE_URL
 from core.locators.main_locators import MainPage
 
 
-def load_page(driver, path=""):
-    """
-    Утилита: открывает страницу по пути и возвращает объект MainPage
-    без полной инициализации (через __new__), чтобы избежать
-    лишнего ожидания загрузки из конструктора WebPage.
-    """
+def open_page(driver, path=""):
     url = f"{BASE_URL}/{path}" if path else BASE_URL
-    driver.get(url)
-    time.sleep(3)
-    p = MainPage.__new__(MainPage)
-    p._web_driver = driver
-    return p
+    page = MainPage(driver, url)
+    return page
 
 
 @allure.epic("ADO Shop UI Tests")
 @allure.feature("Page Elements")
 class TestHeaderElements:
-    """Тесты элементов хедера: шапка, логотип."""
 
     @allure.story("Header presence")
     @allure.severity(allure.severity_level.CRITICAL)
     def test_header_is_present(self, driver):
-        """Проверка наличия элемента <header> на странице."""
-        p = load_page(driver)
-        assert p.header_element.is_presented(), "Header element not found"
+        page = open_page(driver)
+        assert page.header_element.is_presented()
 
     @allure.story("Logo presence")
     @allure.severity(allure.severity_level.CRITICAL)
     def test_logo_is_present(self, driver):
-        """Проверка наличия логотипа в хедере (по CSS-классу header__heading)."""
-        p = load_page(driver)
-        logos = driver.find_elements(
-            By.CSS_SELECTOR, "header a[class*='header__heading']"
-        )
-        assert len(logos) > 0, "Logo not found"
+        page = open_page(driver)
+        assert page.header_logo.is_presented()
 
     @allure.story("Logo is clickable")
     @allure.severity(allure.severity_level.NORMAL)
     def test_logo_click_returns_home(self, driver):
-        """Клик по логотипу должен возвращать на главную страницу."""
-        load_page(driver, "collections/all")
-        logos = driver.find_elements(
-            By.CSS_SELECTOR, "header a[class*='header__heading']"
-        )
-        assert len(logos) > 0, "Logo not found"
-        logos[0].click()
+        open_page(driver, "collections/all")
+        page = MainPage(driver)
+        page.header_logo.click()
         time.sleep(2)
-        assert driver.current_url.rstrip("/") == BASE_URL.rstrip("/"), \
-            "Logo click did not return to homepage"
+        assert driver.current_url.rstrip("/") == BASE_URL.rstrip("/")
 
 
 @allure.epic("ADO Shop UI Tests")
 @allure.feature("Page Elements")
 class TestSearchElements:
-    """Тесты блока поиска: toggle, поле ввода."""
 
     @allure.story("Search toggle is clickable")
     @allure.severity(allure.severity_level.CRITICAL)
     def test_search_toggle_clickable(self, driver):
-        """Кнопка открытия поиска должна быть кликабельной."""
-        p = load_page(driver)
-        assert p.search_toggle.is_clickable(), "Search toggle not clickable"
+        page = open_page(driver)
+        assert page.search_toggle.is_clickable()
 
     @allure.story("Search input appears after toggle")
     @allure.severity(allure.severity_level.CRITICAL)
     def test_search_input_appears(self, driver):
-        """После клика по toggle поле поиска должно стать видимым."""
-        p = load_page(driver)
-        p.search_toggle.click()
+        page = open_page(driver)
+        page.search_toggle.click()
         time.sleep(1)
-        assert p.search_input.is_visible(), "Search input not visible after toggle"
+        assert page.search_input.is_visible()
 
     @allure.story("Search input accepts and clears text")
     @allure.severity(allure.severity_level.NORMAL)
     def test_search_input_clear(self, driver):
-        """Поле поиска должно принимать текст и корректно его отображать."""
-        p = load_page(driver)
-        p.search_toggle.click()
-        p.search_input.send_keys("test query")
+        page = open_page(driver)
+        page.search_toggle.click()
+        page.search_input.send_keys("test query")
         time.sleep(1)
-        val = p.search_input.get_attribute("value")
-        assert val == "test query", f"Expected 'test query', got '{val}'"
+        val = page.search_input.get_attribute("value")
+        assert val == "test query"
 
 
 @allure.epic("ADO Shop UI Tests")
 @allure.feature("Page Elements")
 class TestFooterElements:
-    """Тесты футера: наличие, соцсети, ссылки политик."""
 
     @allure.story("Footer is present")
     @allure.severity(allure.severity_level.NORMAL)
     def test_footer_present(self, driver):
-        """Футер должен присутствовать на странице (виден после скролла)."""
-        p = load_page(driver)
-        p.scroll_down()
-        assert p.footer_element.is_presented(), "Footer not found"
+        page = open_page(driver)
+        page.scroll_down()
+        assert page.footer_element.is_presented()
 
     @allure.story("All social links present")
     @allure.severity(allure.severity_level.NORMAL)
     def test_all_social_links(self, driver):
-        """Все ссылки на соцсети (Instagram, Twitter, Facebook, YouTube)
-        должны присутствовать в футере."""
-        p = load_page(driver)
-        p.scroll_down()
-        socials = [
-            p.footer_instagram,
-            p.footer_twitter,
-            p.footer_facebook,
-            p.footer_youtube,
-        ]
-        for s in socials:
-            assert s.is_presented(), f"Social link {s._locator} not found"
+        page = open_page(driver)
+        page.scroll_down()
+        assert page.footer_instagram.is_presented()
+        assert page.footer_twitter.is_presented()
+        assert page.footer_facebook.is_presented()
+        assert page.footer_youtube.is_presented()
 
     @allure.story("All policy links present")
     @allure.severity(allure.severity_level.NORMAL)
     def test_all_policy_links(self, driver):
-        """Все ссылки на политик (Privacy, Refund, Terms, Legal)
-        должны присутствовать в футере."""
-        p = load_page(driver)
-        p.scroll_down()
-        policies = [
-            p.footer_privacy_policy,
-            p.footer_refund_policy,
-            p.footer_terms_of_service,
-            p.footer_legal_notice,
-        ]
-        for pol in policies:
-            assert pol.is_presented(), f"Policy link {pol._locator} not found"
+        page = open_page(driver)
+        page.scroll_down()
+        assert page.footer_privacy_policy.is_presented()
+        assert page.footer_refund_policy.is_presented()
+        assert page.footer_terms_of_service.is_presented()
+        assert page.footer_legal_notice.is_presented()
 
     @allure.story("Social links have href")
     @allure.severity(allure.severity_level.MINOR)
     def test_social_links_have_href(self, driver):
-        """Каждая ссылка на соцсеть должна иметь корректный href,
-        начинающийся с http."""
-        p = load_page(driver)
-        p.scroll_down()
-        for social in [p.footer_instagram, p.footer_twitter,
-                       p.footer_facebook, p.footer_youtube]:
+        page = open_page(driver)
+        page.scroll_down()
+        for social in [page.footer_instagram, page.footer_twitter,
+                       page.footer_facebook, page.footer_youtube]:
             href = social.get_attribute("href")
-            assert href and href.startswith("http"), \
-                f"Social link {social._locator} has no valid href"
+            assert href and href.startswith("http")
 
 
 @allure.epic("ADO Shop UI Tests")
 @allure.feature("Page Elements")
 class TestNavigationElements:
-    """Тесты навигационных ссылок в хедере."""
 
     @allure.story("Navigation links count")
     @allure.severity(allure.severity_level.CRITICAL)
     def test_nav_links_minimum_count(self, driver):
-        """В хедере должно быть минимум 5 навигационных ссылок."""
-        p = load_page(driver)
-        count = p.nav_links.count()
-        assert count >= 5, f"Expected at least 5 nav links, got {count}"
+        page = open_page(driver)
+        count = page.nav_links.count()
+        assert count >= 5
 
     @allure.story("Navigation links are clickable")
     @allure.severity(allure.severity_level.NORMAL)
     def test_nav_links_are_clickable(self, driver):
-        """Навигационные ссылки должны присутствовать в DOM
-        (некоторые могут быть скрыты в мобильном меню)."""
-        p = load_page(driver)
-        count = p.nav_links.count()
+        page = open_page(driver)
+        count = page.nav_links.count()
         for i in range(min(count, 3)):
-            elem = p.nav_links[i]
-            assert elem is not None, f"Nav link {i} is None"
+            elem = page.nav_links[i]
+            assert elem is not None

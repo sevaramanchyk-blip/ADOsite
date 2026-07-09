@@ -1,152 +1,156 @@
-import subprocess
-import csv
-import sys
-from pathlib import Path
+"""Модуль нагрузочного тестирования ado-shop.com.
+
+Запускает несколько headless Chrome-браузеров, которые параллельно
+открывают страницы сайта и замеряют время загрузки.
+Результаты агрегируются в статистику (среднее, P95, RPS и т.д.).
+"""
+
+import time
+import statistics
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from helpers.load_config import PAGES
 
 
-def run_load_test(
-    users=10, spawn_rate=5, run_time="30s"
-) -> dict:
-    results_dir = Path(__file__).parent.parent / "results"
-    results_dir.mkdir(exist_ok=True)
-    csv_path = results_dir / "load_test_stats.csv"
+def _make_driver():
+    """Создаёт headless Chrome-драйвер с настройками для нагрузочного теста."""
+    opts = Options()
+    opts.add_argument("--headless=new")       # Режим без окна (headless)
+    opts.add_argument("--no-sandbox")         # Отключает песочницу (нужно в контейнерах)
+    opts.add_argument("--disable-dev-shm-usage")  # Уменьшает потребление /dev/shm
+    opts.add_argument("--disable-gpu")        # Отключаем GPU-ускорение (не нужно в headless)
+    opts.add_argument("--window-size=1920,1080")   # Фиксируем размер окна для консистентности
+    return webdriver.Chrome(options=opts)
 
-    if csv_path.exists():
-        csv_path.unlink()
 
-    cmd = [
-        sys.executable, "-m", "locust",
-        "-f", "locustfile.py",
-        "--host", "https://ado-shop.com",
-        "--headless",
-        "-u", str(users),
-        "-r", str(spawn_rate),
-        "--run-time", run_time,
-        "--csv", str(results_dir / "load_test"),
-        "--only-summary",
-        "--skip-log-setup",
-    ]
+def _worker(worker_id, urls, duration):
+    """Рабочий поток: открывает страницы циклически в течение duration секунд.
 
+    Args:
+        worker_id: ID потока (для логирования).
+        urls: список URL для циклического перебора.
+        duration: длительность работы в секундах.
+
+    Returns:
+        Список словарей с результатами каждого запроса.
+    """
+    results = []
+    driver = None
     try:
-        proc = subprocess.run(
-            cmd, capture_output=True, text=True,
-            timeout=120, cwd=str(Path(__file__).parent)
-        )
-        stdout = proc.stdout
-        stderr = proc.stderr
-    except subprocess.TimeoutExpired:
-        return {"error": "Тест превысил лимит времени (120 сек)"}
+        driver = _make_driver()
+        # Вычисляем момент окончания работы
+        end_time = time.time() + duration
+        i = 0
+        # Цикл работает до истечения времени
+        while time.time() < end_time:
+            # Циклически перебираем URL (round-robin)
+            url = urls[i % len(urls)]
+            start = time.time()
+            try:
+                driver.get(url)
+                load_time = time.time() - start
+                title = driver.title
+                results.append({
+                    "url": url,
+                    "time": load_time,
+                    "status": "ok",
+                    "title": title,
+                })
+            except Exception as e:
+                # Ловим ошибки загрузки (таймауты, ошибки сети и т.д.)
+                load_time = time.time() - start
+                results.append({
+                    "url": url,
+                    "time": load_time,
+                    "status": "error",
+                    "error": str(e)[:80],  # Ограничиваем длину текста ошибки
+                })
+            i += 1
+    finally:
+        # Гарантируем закрытие браузера при выходе
+        if driver:
+            try:
+                driver.quit()
+            except Exception:
+                pass
+    return results
 
-    stats_path = results_dir / "load_test_stats.csv"
-    if not stats_path.exists():
+
+def run_load_test(users=10, ramp_up=5, duration_str="30s"):
+    """Запускает нагрузочный тест и возвращает агрегированную статистику.
+
+    Args:
+        users: количество параллельных браузеров.
+        ramp_up: время разгона (сек), пока не используется.
+        duration_str: длительность теста (например, "30s").
+
+    Returns:
+        Словарь с HTML-текстом результатов или ошибкой.
+    """
+    # Парсим длительность из строки (убираем "s", если есть)
+    try:
+        duration = int(duration_str.replace("s", ""))
+    except ValueError:
+        duration = 30
+
+    all_results = []
+    start = time.time()
+
+    # Запускаем пул потоков, каждый поток — один браузер
+    with ThreadPoolExecutor(max_workers=users) as pool:
+        futures = []
+        for i in range(users):
+            futures.append(pool.submit(_worker, i, PAGES, duration))
+        # Собираем результаты по мере завершения потоков
+        for f in as_completed(futures):
+            all_results.extend(f.result())
+
+    elapsed = round(time.time() - start, 1)
+
+    # Разделяем результаты на успешные и ошибочные
+    ok = [r for r in all_results if r["status"] == "ok"]
+    fail = [r for r in all_results if r["status"] == "error"]
+    times = [r["time"] for r in ok]
+
+    total = len(all_results)
+    success = len(ok)
+
+    if not times:
         return {
-            "error": "Файл результатов не найден",
-            "stdout": stdout[-2000:] if stdout else "",
-            "stderr": stderr[-1000:] if stderr else "",
+            "error": f"Нет успешных запросов. Ошибок: {len(fail)}"
         }
 
-    return parse_results(stats_path, stdout)
+    # Рассчитываем статистику времени отклика
+    avg_time = round(statistics.mean(times), 2)          # Среднее время
+    p95 = round(sorted(times)[int(len(times) * 0.95)], 2) # 95-й перцентиль
+    min_time = round(min(times), 2)                        # Минимальное
+    max_time = round(max(times), 2)                        # Максимальное
+    rps = round(total / elapsed, 1) if elapsed > 0 else 0  # Запросов в секунду
 
-
-def parse_results(csv_path: Path, raw_output: str) -> dict:
-    if not csv_path.exists():
-        return {"error": "Файл результатов не найден"}
-
-    stats = []
-    with open(csv_path, newline="", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            stats.append(row)
-
-    if not stats:
-        return {"error": "Нет данных в csv"}
-
-    total_requests = 0
-    total_failures = 0
-    avg_response = 0
-    max_response = 0
-    min_response = float("inf")
-    rps = 0
-    endpoints = []
-
-    for row in stats:
-        name = row.get("Name", "")
-        if name == "Aggregated":
-            total_requests = int(row.get("Request Count", 0))
-            total_failures = int(row.get("Failure Count", 0))
-            avg_response = float(
-                row.get("Average Response Time", 0) or 0
-            )
-            max_response = float(
-                row.get("Max Response Time", 0) or 0
-            )
-            min_response = float(
-                row.get("Min Response Time", 0) or 0
-            )
-            rps = float(row.get("Requests/s", 0) or 0)
-        elif name:
-            endpoints.append({
-                "name": name,
-                "requests": row.get("Request Count", "0"),
-                "failures": row.get("Failure Count", "0"),
-                "avg_ms": row.get(
-                    "Average Response Time", "0"
-                ),
-                "rps": row.get("Requests/s", "0"),
-            })
-
-    success_rate = (
-        ((total_requests - total_failures) / total_requests * 100)
-        if total_requests > 0 else 0
+    # Формируем HTML-текст с результатами для Telegram
+    text = (
+        f"<b>⚡ Нагрузочный тест — результаты</b>\n"
+        f"<code>"
+        f"Пользователей: {users}\n"
+        f"Длительность: {duration}с (факт {elapsed}с)\n"
+        f"Всего запросов: {total}\n"
+        f"Успешных: {success} | Ошибок: {len(fail)}\n"
+        f"Успешность: {round(success/total*100)}%\n"
+        f"RPS: {rps}\n\n"
+        f"Время отклика (сек):\n"
+        f"  Среднее: {avg_time}\n"
+        f"  Мин:     {min_time}\n"
+        f"  Макс:   {max_time}\n"
+        f"  P95:     {p95}"
+        f"</code>"
     )
 
-    if success_rate >= 95:
-        emoji = "🟢"
-    elif success_rate >= 70:
-        emoji = "🟡"
-    else:
-        emoji = "🔴"
+    # Добавляем уникальные ошибки (макс. 5), если они были
+    if fail:
+        errors = set(r["error"] for r in fail)
+        text += "\n\n<b>Ошибки:</b>\n"
+        for err in list(errors)[:5]:
+            text += f"  • <code>{err}</code>\n"
 
-    table = f"<b>{emoji} Нагрузочный тест</b>\n\n"
-
-    table += "<b>📊 Общая статистика</b>\n"
-    table += "<code>┌─────────────────┬──────────┐\n"
-    table += "│ Параметр        │ Значение │\n"
-    table += "├─────────────────┼──────────┤\n"
-    table += f"│ Всего запросов  │ {total_requests:>8} │\n"
-    table += f"│ Успешных        │ {total_requests - total_failures:>8} │\n"
-    table += f"│ Ошибок          │ {total_failures:>8} │\n"
-    table += f"│ Успешность      │ {success_rate:>7.1f}% │\n"
-    table += f"│ RPS             │ {rps:>8.1f} │\n"
-    table += "└─────────────────┴──────────┘</code>\n\n"
-
-    table += "<b>⏱ Время отклика (мс)</b>\n"
-    table += "<code>┌─────────────────┬──────────┐\n"
-    table += "│ Параметр        │ Значение │\n"
-    table += "├─────────────────┼──────────┤\n"
-    table += f"│ Минимальное     │ {min_response:>8.0f} │\n"
-    table += f"│ Среднее         │ {avg_response:>8.0f} │\n"
-    table += f"│ Максимальное    │ {max_response:>8.0f} │\n"
-    table += "└─────────────────┴──────────┘</code>\n\n"
-
-    if endpoints:
-        table += "<b>📄 По эндпоинтам</b>\n"
-        table += "<code>┌─────────────────────────────────────┬──────┬─────────┐\n"
-        table += "│ Эндпоинт                          │ Запр │ Среднее │\n"
-        table += "├─────────────────────────────────────┼──────┼─────────┤\n"
-        for ep in endpoints:
-            name = ep['name']
-            if len(name) > 35:
-                name = name[:32] + "..."
-            table += f"│ {name:<35} │ {ep['requests']:>4} │ {float(ep['avg_ms']):>6.0f}ms │\n"
-        table += "└─────────────────────────────────────┴──────┴─────────┘</code>"
-
-    return {"text": table}
-
-
-if __name__ == "__main__":
-    result = run_load_test()
-    if "error" in result:
-        print(f"ОШИБКА: {result['error']}")
-    else:
-        print(result["text"])
+    return {"text": text}

@@ -8,8 +8,7 @@ class MainPage(WebPage):
     def __init__(self, web_driver, url=''):
         if not url:
             url = os.getenv("MAIN_PAGE") or MAIN_URL
-
-            super().__init__(web_driver, url)
+        super().__init__(web_driver, url)
 
     # ======================== HEADER ========================
 

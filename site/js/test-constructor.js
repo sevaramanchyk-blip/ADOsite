@@ -56,7 +56,7 @@
     if(activeTab==='api'){
       await runApiTest();
     }else if(activeTab==='ui'){
-      runUiTest();
+      await runUiTest();
     }else{
       runLoadTest();
     }
@@ -73,25 +73,29 @@
       body:document.getElementById('api-body').value
     };
 
+    let data;
     try{
       const resp=await fetch('/api/test',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify(params)
       });
-      const data=await resp.json();
-      renderResults(data);
+      data=await resp.json();
     }catch(e){
-      renderResults({
-        passed:0,failed:1,duration:'0.0s',
+      data={
+        passed:0,failed:1,duration:'0s',
         tests:[{name:'Request Failed',status:'failed',duration:'0s',error:e.message}]
-      });
+      };
     }
 
+    if(!data)data={passed:0,failed:0,duration:'0s',tests:[]};
+    if(!data.tests)data.tests=[];
+
+    renderResults(data);
     stopLoading();
   }
 
-  function runUiTest(){
+  async function runUiTest(){
     const selector=document.getElementById('ui-selector').value;
     const assertion=document.getElementById('ui-assertion').value;
     const browser=document.getElementById('ui-browser').value;
@@ -100,68 +104,89 @@
     const customSelector=document.getElementById('ui-custom-selector').value;
     const url=document.getElementById('ui-url').value;
 
-    const tests=[];
-    const start=performance.now();
+    const selectorTestMap={
+      'header':'elements',
+      'footer':'elements',
+      'logo':'elements',
+      'cart':'business',
+      'products':'adoshop',
+      'search':'elements',
+      'nav':'elements',
+      'h1':'spell',
+    };
 
-    // Real checks via fetch
-    fetch(url).then(r=>{
-      const status=r.status;
-      tests.push({name:`HTTP ${url} → ${status}`,status:status===200?'passed':'failed',duration:'0s',detail:`Status: ${status}`});
-      return r.text();
-    }).then(html=>{
-      const dur=((performance.now()-start)/1000).toFixed(2);
+    const testType=selectorTestMap[selector]||'ui';
 
-      // Check for selector in HTML
-      const selectorMap={
-        'header':'<header','footer':'<footer','logo':'logo','cart':'cart-icon-bubble',
-        'products':'product','search':'search','nav':'<nav','h1':'<h1'
+    let data;
+    try{
+      const resp=await fetch('/api/run-tests',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          type:testType,
+          selector:selector,
+          assertion:assertion,
+          url:url
+        })
+      });
+      data=await resp.json();
+    }catch(e){
+      data={
+        passed:0,failed:1,duration:'0s',
+        tests:[{name:'Connection Error',status:'failed',duration:'0s',error:e.message}],
+        raw_output:''
       };
-      const searchStr=selectorMap[selector]||selector;
-      const found=html.toLowerCase().includes(searchStr.toLowerCase());
-      tests.push({name:`[${browser}] ${selector} ${assertion}`,status:found?'passed':'failed',duration:dur+'s',detail:found?`Found "${searchStr}"`:`"${searchStr}" not found`});
+    }
 
-      // Page load
-      tests.push({name:'Page Load Complete',status:'passed',duration:dur+'s'});
+    if(!data)data={passed:0,failed:0,duration:'0s',tests:[],raw_output:''};
+    if(!data.tests)data.tests=[];
+    if(typeof data.passed!=='number')data.passed=0;
+    if(typeof data.failed!=='number')data.failed=0;
 
-      // Content checks
-      if(assertion==='text'){
-        const hasText=html.length>0;
-        tests.push({name:'Has Text Content',status:hasText?'passed':'failed',duration:'0.01s',detail:`${html.length} chars`});
+    if(data.tests.length===0&&data.raw_output){
+      const lines=data.raw_output.split('\n');
+      const pytestTests=[];
+      let p=0,f=0;
+
+      lines.forEach(line=>{
+        const trimmed=line.trim();
+        if(trimmed.includes('PASSED')&&trimmed.includes('::')){
+          const m=trimmed.match(/(\S+::\S+)\s+PASSED/);
+          if(m){
+            let name=m[1].split('::').pop();
+            pytestTests.push({name:name,status:'passed',duration:'0s'});
+            p++;
+          }
+        }else if(trimmed.includes('FAILED')&&trimmed.includes('::')){
+          const m=trimmed.match(/(\S+::\S+)\s+FAILED/);
+          if(m){
+            let name=m[1].split('::').pop();
+            pytestTests.push({name:name,status:'failed',duration:'0s',error:trimmed.substring(0,120)});
+            f++;
+          }
+        }
+      });
+
+      if(pytestTests.length>0){
+        data.tests=pytestTests;
+        data.passed=p;
+        data.failed=f;
+      }else{
+        const lastLines=lines.slice(-5).join(' | ');
+        data.tests=[{name:'Test output',status:data.failed>0?'failed':'passed',duration:data.duration||'0s',error:lastLines}];
       }
-      if(assertion==='visible'||assertion==='exists'){
-        tests.push({name:'Element Exists in DOM',status:found?'passed':'failed',duration:'0.01s'});
-      }
+    }
 
-      // No empty page
-      tests.push({name:'Response Not Empty',status:html.length>100?'passed':'failed',duration:'0.01s',detail:`${html.length} bytes`});
+    if(data.tests.length===0){
+      data.tests=[{name:'No results from server',status:'failed',duration:'0s',error:'Empty response from pytest'}];
+    }
 
-      // Custom selector check
-      if(customSelector){
-        const csFound=html.toLowerCase().includes(customSelector.toLowerCase());
-        tests.push({name:`Custom: ${customSelector}`,status:csFound?'passed':'failed',duration:'0.02s',detail:csFound?'Found':'Not found'});
-      }
-
-      // HTML structure
-      tests.push({name:'Valid HTML Structure',status:html.includes('</html>')?'passed':'failed',duration:'0.01s'});
-      tests.push({name:'No Broken Tags',status:(html.match(/<[^>]+>/g)||[]).length>10?'passed':'failed',duration:'0.01s'});
-
-      // JS errors check (basic)
-      const scriptCount=(html.match(/<script/g)||[]).length;
-      tests.push({name:`Scripts Loaded (${scriptCount})`,status:scriptCount>0?'passed':'failed',duration:'0.01s'});
-
-      // CSS check
-      const cssLinks=(html.match(/\.css/g)||[]).length;
-      tests.push({name:`Stylesheets (${cssLinks})`,status:cssLinks>0?'passed':'failed',duration:'0.01s'});
-
-      const passed=tests.filter(t=>t.status==='passed').length;
-      const failed=tests.filter(t=>t.status==='failed').length;
-      renderResults({passed,failed,duration:dur+'s',tests});
-      stopLoading();
-    }).catch(e=>{
-      tests.push({name:'Connection Error',status:'failed',duration:'0s',error:e.message});
-      renderResults({passed:0,failed:1,duration:'0s',tests});
-      stopLoading();
+    data.tests.forEach(t=>{
+      if(!t.detail)t.detail=browser+' | '+assertion;
     });
+
+    renderResults(data);
+    stopLoading();
   }
 
   function runLoadTest(){
@@ -235,14 +260,18 @@
   }
 
   function renderResults(data){
+    if(!data){
+      data={passed:0,failed:1,duration:'0s',tests:[{name:'No response from server',status:'failed',duration:'0s',error:'Empty response'}]};
+    }
     results.style.display='block';
-    results.querySelector('.results-passed').textContent=data.passed+' Passed';
-    results.querySelector('.results-failed').textContent=data.failed+' Failed';
-    results.querySelector('.results-time').textContent=data.duration;
+    results.querySelector('.results-passed').textContent=(data.passed||0)+' Passed';
+    results.querySelector('.results-failed').textContent=(data.failed||0)+' Failed';
+    results.querySelector('.results-time').textContent=data.duration||'0s';
 
     const list=results.querySelector('.results-list');
     list.innerHTML='';
-    data.tests.forEach(t=>{
+    const tests=data.tests||[];
+    tests.forEach(t=>{
       const item=document.createElement('div');
       item.className='result-item '+(t.status==='passed'?'pass':'fail');
       let detail='';
@@ -255,5 +284,9 @@
       `;
       list.appendChild(item);
     });
+
+    if(tests.length===0){
+      list.innerHTML='<div class="result-item fail"><span class="result-status">failed</span><span class="result-name">No test results returned</span><span class="result-duration">0s</span></div>';
+    }
   }
 })();

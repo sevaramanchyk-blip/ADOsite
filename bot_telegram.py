@@ -212,6 +212,9 @@ MAIN_MENU = InlineKeyboardMarkup([
         InlineKeyboardButton(
             "📇 Визитка", callback_data="contact_card"
         ),
+        InlineKeyboardButton(
+            "🔗 Ссылки", callback_data="run_links"
+        ),
     ],
 ])
 
@@ -754,6 +757,36 @@ async def callback_back_to_main(
     )
 
 
+async def callback_run_links(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    """Обработчик кнопки 'Ссылки' — проверка всех внутренних ссылок."""
+    query = update.callback_query
+    chat_id = query.message.chat_id
+    await query.answer()
+    await cleanup_messages(
+        context, chat_id, context.user_data,
+        except_id=query.message.message_id
+    )
+    msg = await query.message.reply_text(
+        "🔗 Проверка всех ссылок сайта..."
+    )
+    await track_message(context, chat_id, msg, context.user_data)
+    clear_results()
+    result = await execute_command(
+        'pytest -s -v tests/ui/test_links.py '
+        '--alluredir=./results'
+    )
+    text = format_results_generic(
+        result, "Проверка ссылок", "🔗"
+    )
+    msg = await query.message.reply_text(
+        text or "✅ Все ссылки работают!",
+        parse_mode='HTML'
+    )
+    await track_message(context, chat_id, msg, context.user_data)
+
+
 async def callback_about_me(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
@@ -1096,6 +1129,11 @@ def main() -> None:
     application.add_handler(
         CallbackQueryHandler(
             callback_contact_card, pattern="^contact_card$"
+        )
+    )
+    application.add_handler(
+        CallbackQueryHandler(
+            callback_run_links, pattern="^run_links$"
         )
     )
     application.add_handler(

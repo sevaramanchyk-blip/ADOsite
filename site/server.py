@@ -2,17 +2,27 @@ import http.server
 import socketserver
 import json
 import os
+import sys
 import time
 import urllib.request
 import urllib.error
 import ssl
 import socket
+import subprocess
 import traceback
+import re
+from pathlib import Path
 from urllib.parse import urlparse
 
 PORT = 8000
 DIRECTORY = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = Path(DIRECTORY).parent
 os.chdir(DIRECTORY)
+
+# Python из venv для запуска pytest
+VENV_PYTHON = PROJECT_ROOT / ".venv" / "Scripts" / "python.exe"
+if not VENV_PYTHON.exists():
+    VENV_PYTHON = Path(sys.executable)
 
 
 class ThreadedTCPServer(socketserver.ThreadingTCPServer):
@@ -44,6 +54,8 @@ class ADOHandler(http.server.SimpleHTTPRequestHandler):
         try:
             if self.path == '/api/test':
                 self.handle_api_test()
+            elif self.path == '/api/run-tests':
+                self.handle_run_tests()
             else:
                 self.send_error(404)
         except Exception as e:
@@ -52,6 +64,158 @@ class ADOHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_json(500, {"error": str(e)})
             except Exception:
                 pass
+
+    def handle_run_tests(self):
+        length = int(self.headers.get('Content-Length', 0))
+        body = self.rfile.read(length)
+        try:
+            params = json.loads(body)
+        except json.JSONDecodeError:
+            self.send_json(400, {"error": "Invalid JSON"})
+            return
+
+        test_type = params.get('type', 'api')
+        test_path = params.get('path', '')
+        selector = params.get('selector', '')
+        assertion = params.get('assertion', 'visible')
+        url = params.get('url', 'https://ado-shop.com/')
+
+        selector_test_map = {
+            'header': 'tests/ui/test_elements.py::TestHeaderElements',
+            'footer': 'tests/ui/test_elements.py::TestFooterElements',
+            'logo': 'tests/ui/test_elements.py::TestHeaderElements',
+            'search': 'tests/ui/test_elements.py::TestSearchElements',
+            'nav': 'tests/ui/test_elements.py::TestNavigationElements',
+            'cart': 'tests/ui/test_business.py::TestCartFlow',
+            'products': 'tests/ui/test_adoshop.py::TestProductPages',
+            'h1': 'tests/ui/test_spellcheck.py::TestHomepageSpellcheck',
+        }
+
+        test_map = {
+            'api': 'tests/api',
+            'ui': 'tests/ui',
+            'spell': 'tests/ui/test_spellcheck.py',
+            'elements': 'tests/ui/test_elements.py',
+            'business': 'tests/ui/test_business.py',
+            'links': 'tests/ui/test_links.py',
+            'all': 'tests/api tests/ui',
+            'extended': 'tests/ui/test_ui_extended.py',
+            'adoshop': 'tests/ui/test_adoshop.py',
+        }
+
+        if selector in selector_test_map:
+            test_target = selector_test_map[selector]
+        elif test_type == 'custom':
+            test_target = test_path if test_path else 'tests/ui'
+        elif test_type in test_map:
+            test_target = test_map[test_type]
+        else:
+            test_target = 'tests/api tests/ui'
+
+        cmd = [str(VENV_PYTHON), "-m", "pytest", "-v", test_target, "--tb=line"]
+
+        start_time = time.time()
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=300,
+                cwd=str(PROJECT_ROOT),
+                encoding="utf-8",
+                errors="replace"
+            )
+            output = result.stdout + result.stderr
+            if not output.strip():
+                output = f"Exit code: {result.returncode}\nNo output captured."
+        except subprocess.TimeoutExpired:
+            output = "TIMEOUT: Tests took longer than 300 seconds"
+        except Exception as e:
+            output = f"ERROR: {str(e)}"
+
+        duration = time.time() - start_time
+        parsed = self._parse_pytest_output(output)
+
+        response = {
+            "passed": parsed['passed'],
+            "failed": parsed['failed'],
+            "skipped": parsed['skipped'],
+            "duration": f"{duration:.1f}s",
+            "tests": parsed['tests'],
+            "raw_output": output[-2000:] if len(output) > 2000 else output
+        }
+        self.send_json(200, response)
+
+    def _parse_pytest_output(self, output):
+        passed = 0
+        failed = 0
+        skipped = 0
+        tests = []
+
+        lines = output.split('\n')
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+
+            if '::' in stripped and 'PASSED' in stripped:
+                match = re.search(r'(\S+::\S+)\s+PASSED', stripped)
+                if match:
+                    name = match.group(1).split('::')[-1]
+                    tests.append({"name": name, "status": "passed", "duration": "0s"})
+                    passed += 1
+
+            elif '::' in stripped and 'FAILED' in stripped:
+                match = re.search(r'(\S+::\S+)\s+FAILED', stripped)
+                if match:
+                    name = match.group(1).split('::')[-1]
+                    error_msg = ""
+                    for j in range(i + 1, min(i + 5, len(lines))):
+                        eline = lines[j].strip()
+                        if eline and 'FAILED' not in eline and 'ERRORS' not in eline:
+                            error_msg = eline[:120]
+                            break
+                    tests.append({
+                        "name": name,
+                        "status": "failed",
+                        "duration": "0s",
+                        "error": error_msg
+                    })
+                    failed += 1
+
+            elif '::' in stripped and 'SKIPPED' in stripped:
+                match = re.search(r'(\S+::\S+)\s+SKIPPED', stripped)
+                if match:
+                    name = match.group(1).split('::')[-1]
+                    tests.append({"name": name, "status": "skipped", "duration": "0s"})
+                    skipped += 1
+
+            elif 'ERROR' in stripped and '::' in stripped:
+                match = re.search(r'ERROR\s+(\S+::\S+)', stripped)
+                if match:
+                    name = match.group(1).split('::')[-1]
+                    tests.append({
+                        "name": name,
+                        "status": "failed",
+                        "duration": "0s",
+                        "error": stripped[:120]
+                    })
+                    failed += 1
+
+        summary_match = re.search(r'(\d+) passed', output)
+        if summary_match:
+            passed = max(passed, int(summary_match.group(1)))
+        summary_fail = re.search(r'(\d+) failed', output)
+        if summary_fail:
+            failed = max(failed, int(summary_fail.group(1)))
+        summary_skip = re.search(r'(\d+) skipped', output)
+        if summary_skip:
+            skipped = max(skipped, int(summary_skip.group(1)))
+
+        return {
+            'passed': passed,
+            'failed': failed,
+            'skipped': skipped,
+            'tests': tests
+        }
 
     def handle_api_test(self):
         length = int(self.headers.get('Content-Length', 0))
@@ -80,8 +244,8 @@ class ADOHandler(http.server.SimpleHTTPRequestHandler):
         # Test 1: DNS resolution
         t0 = time.time()
         try:
-            parsed = urlparse(url)
-            hostname = parsed.hostname
+            parsed_url = urlparse(url)
+            hostname = parsed_url.hostname
             socket.getaddrinfo(hostname, 443)
             dns_time = time.time() - t0
             tests.append({
@@ -100,7 +264,7 @@ class ADOHandler(http.server.SimpleHTTPRequestHandler):
         # Test 2: TCP connection
         t0 = time.time()
         try:
-            hostname = parsed.hostname
+            hostname = parsed_url.hostname
             sock = socket.create_connection((hostname, 443), timeout=timeout)
             sock.close()
             tcp_time = time.time() - t0
@@ -121,11 +285,11 @@ class ADOHandler(http.server.SimpleHTTPRequestHandler):
         t0 = time.time()
         try:
             ctx = ssl.create_default_context()
-            hostname = parsed.hostname
+            hostname = parsed_url.hostname
             conn = ctx.wrap_socket(socket.socket(), server_hostname=hostname)
             conn.settimeout(timeout)
             conn.connect((hostname, 443))
-            cert = conn.getpeercert()
+            conn.getpeercert()
             conn.close()
             ssl_time = time.time() - t0
             tests.append({
@@ -170,20 +334,18 @@ class ADOHandler(http.server.SimpleHTTPRequestHandler):
             resp_body = resp.read().decode('utf-8', errors='replace')
             response_time = time.time() - t0
 
-            # Determine expected status based on method
             expected_status = int(params.get('expected_status', '200'))
             if method in ('PUT', 'DELETE', 'PATCH'):
                 if status_code in (403, 404, 405):
                     expected_status = status_code
 
             tests.append({
-                "name": f"{method} {url} → {status_code}",
+                "name": f"{method} {url} -> {status_code}",
                 "status": "passed" if status_code == expected_status else "failed",
                 "duration": f"{response_time:.3f}s",
                 "detail": f"Expected {expected_status}, got {status_code}" if status_code != expected_status else None
             })
 
-            # Test 5: Response time
             threshold = int(params.get('timeout', 10))
             tests.append({
                 "name": f"Response Time < {threshold}s",
@@ -192,7 +354,6 @@ class ADOHandler(http.server.SimpleHTTPRequestHandler):
                 "detail": f"Took {response_time:.2f}s" if response_time >= threshold else None
             })
 
-            # Test 6: Content-Type header
             ct = resp_headers.get('Content-Type', '')
             if method == 'GET' and '200' in str(status_code):
                 tests.append({
@@ -202,7 +363,6 @@ class ADOHandler(http.server.SimpleHTTPRequestHandler):
                     "detail": f"Content-Type: {ct}" if ct else "Missing"
                 })
 
-            # Test 7: Response body not empty
             if method == 'GET':
                 tests.append({
                     "name": "Response Body Not Empty",
@@ -211,7 +371,6 @@ class ADOHandler(http.server.SimpleHTTPRequestHandler):
                     "detail": f"Size: {len(resp_body)} bytes"
                 })
 
-            # Test 8: Server header
             server = resp_headers.get('Server', '')
             tests.append({
                 "name": "Server Header Present",
@@ -220,7 +379,6 @@ class ADOHandler(http.server.SimpleHTTPRequestHandler):
                 "detail": f"Server: {server}" if server else "Missing"
             })
 
-            # Test 9: Cache-Control
             cc = resp_headers.get('Cache-Control', '')
             tests.append({
                 "name": "Cache-Control Present",
@@ -229,7 +387,6 @@ class ADOHandler(http.server.SimpleHTTPRequestHandler):
                 "detail": f"Cache-Control: {cc}" if cc else "Missing"
             })
 
-            # Test 10: X-Content-Type-Options
             xcto = resp_headers.get('X-Content-Type-Options', '')
             tests.append({
                 "name": "X-Content-Type-Options",
@@ -238,7 +395,6 @@ class ADOHandler(http.server.SimpleHTTPRequestHandler):
                 "detail": f"X-Content-Type-Options: {xcto}" if xcto else "Missing"
             })
 
-            # Test 11: CORS Headers
             acao = resp_headers.get('Access-Control-Allow-Origin', '')
             tests.append({
                 "name": "CORS Headers Check",
@@ -247,7 +403,6 @@ class ADOHandler(http.server.SimpleHTTPRequestHandler):
                 "detail": f"ACAO: {acao}" if acao else "No CORS headers"
             })
 
-            # Test 12: Content-Length
             cl = resp_headers.get('Content-Length', '')
             tests.append({
                 "name": "Content-Length Valid",
@@ -260,7 +415,7 @@ class ADOHandler(http.server.SimpleHTTPRequestHandler):
             response_time = time.time() - t0
             status_code = e.code
             tests.append({
-                "name": f"{method} {url} → {status_code}",
+                "name": f"{method} {url} -> {status_code}",
                 "status": "passed" if status_code in (403, 404, 405) else "failed",
                 "duration": f"{response_time:.3f}s",
                 "detail": f"HTTP {status_code}: {e.reason}"
@@ -273,7 +428,7 @@ class ADOHandler(http.server.SimpleHTTPRequestHandler):
         except Exception as e:
             response_time = time.time() - t0
             tests.append({
-                "name": f"{method} {url} → ERROR",
+                "name": f"{method} {url} -> ERROR",
                 "status": "failed",
                 "duration": f"{response_time:.3f}s",
                 "error": str(e)
